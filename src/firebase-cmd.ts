@@ -1,3 +1,4 @@
+import { ChildProcess, SpawnOptions } from "child_process";
 import spawn from "cross-spawn";
 
 interface CommandConfiguration {
@@ -11,6 +12,8 @@ interface OptionConfiguration {
   description: string;
 }
 
+const COMMAND_TIMEOUT = 10000;
+
 export class FirebaseCommands {
   static async getCommandConfigList(): Promise<Array<CommandConfiguration>> {
     const commandConfigList: Array<CommandConfiguration> = [];
@@ -20,10 +23,10 @@ export class FirebaseCommands {
         firebaseHelp.kill();
         reject(
           new Error(
-            `Failed to load commands via \`firebase --help\`. Promise timed out after ${10000} ms`
+            `Failed to load commands via \`firebase --help\`. Promise timed out after ${COMMAND_TIMEOUT} ms`
           )
         );
-      }, 10000);
+      }, COMMAND_TIMEOUT);
 
       firebaseHelp.stdout.on("data", (data) => {
         const _outputCommand: string = data
@@ -62,10 +65,10 @@ export class FirebaseCommands {
       const timer = setTimeout(() => {
         reject(
           new Error(
-            `Failed to load commands via \`firebase --help\`. Promise timed out after ${10000} ms`
+            `Failed to load commands via \`firebase --help\`. Promise timed out after ${COMMAND_TIMEOUT} ms`
           )
         );
-      }, 10000);
+      }, COMMAND_TIMEOUT);
 
       const firebaseHelp = spawn("firebase", [cmd.trim(), "--help"]);
       firebaseHelp.stdout.on("data", (data) => {
@@ -109,5 +112,13 @@ export class FirebaseCommands {
       usage: usage,
       options: optionConfigList,
     };
+  }
+
+  static runCommand(
+    command: string,
+    args?: ReadonlyArray<string>,
+    options?: SpawnOptions
+  ): ChildProcess {
+    return spawn(command, args, options);
   }
 }
