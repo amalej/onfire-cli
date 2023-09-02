@@ -2,15 +2,14 @@
 
 import readline from "readline";
 import { FirebaseCommands } from "./firebase-cmd";
-
-interface CursorPosition {
-  x: number;
-  y: number;
-}
+import { CommandLineInterface } from "./cli";
 
 interface CommandConfig {
-  value: string;
   label: string;
+  usage: string;
+  options: {
+    [key: string]: CommandOptionsConfig;
+  } | null;
 }
 
 interface CommandOptionsConfig {
@@ -18,163 +17,14 @@ interface CommandOptionsConfig {
   hint: string;
   description: string;
 }
-
-interface CommandHelpConfig {
-  usage: string;
-  options: Array<CommandOptionsConfig>;
-}
-
-class TerminalBase {
-  prefix = "";
-  maxItemShown: number;
-  protected displayDownBuffer: number;
-  protected originalCursorPos: CursorPosition = {
-    x: 0,
-    y: 0,
-  };
-  protected currentCursorPos: CursorPosition = {
-    x: 0,
-    y: 0,
-  };
-
-  constructor({
-    prefix = "",
-    maxItemShown = 4,
-  }: { prefix?: string; maxItemShown?: number } = {}) {
-    this.prefix = prefix;
-    this.displayDownBuffer = Math.ceil(maxItemShown * 2);
-    this.maxItemShown = maxItemShown;
-  }
-
-  protected getCursorPosition(): Promise<CursorPosition> {
-    return new Promise((resolve) => {
-      const termcodes = { cursorGetPosition: "\u001b[6n" };
-
-      process.stdin.setEncoding("utf8");
-      process.stdin.setRawMode(true);
-
-      const readfx = function () {
-        const buf = process.stdin.read();
-        const str = JSON.stringify(buf); // "\u001b[9;1R"
-        const regex = /\[(.*)/g;
-        const xy = regex.exec(str)[0].replace(/\[|R"/g, "").split(";");
-        const pos = { x: parseInt(xy[1]), y: parseInt(xy[0]) };
-        process.stdin.setRawMode(false);
-        resolve(pos);
-      };
-
-      process.stdin.once("readable", readfx);
-      process.stdout.write(termcodes.cursorGetPosition);
-    });
-  }
-
-  protected shiftCursorPosition(dx: number, dy?: number) {
-    this.currentCursorPos.x += dx;
-    this.currentCursorPos.y += dy || 0;
-    process.stdout.cursorTo(this.currentCursorPos.x, this.currentCursorPos.y);
-  }
-
-  protected createTerminalBuffer() {
-    for (let i = 0; i < this.displayDownBuffer; i++) {
-      console.log("");
-    }
-    process.stdout.moveCursor(0, -this.displayDownBuffer);
-  }
-
-  protected clearTerminalDownward() {
-    process.stdout.moveCursor(0, 1);
-    for (
-      let i = this.currentCursorPos.y + 1;
-      i < process.stdout.rows - 1;
-      i++
-    ) {
-      console.log(`\r\x1b[K`);
-    }
-    this.moveCursorToSavedCurrentPos();
-  }
-
-  protected moveCursorToSavedCurrentPos() {
-    process.stdout.cursorTo(this.currentCursorPos.x, this.currentCursorPos.y);
-  }
-
-  protected formatArguments(command: string): {
-    base: string;
-    args: {
-      [key: string]: string;
-    };
-    options: Array<string>;
-  } {
-    const args = command.split(" ");
-    let _base = args[0];
-    let _arguments = {};
-    let _options = [];
-    if (args === null) return null;
-    for (let i = 0; i < args.length; i++) {
-      if (args[i].includes("=")) {
-        const splitArg = args[i].split("=");
-        if (_arguments === null) {
-          _arguments = {
-            [splitArg[0]]: splitArg[1],
-          };
-        } else {
-          _arguments[splitArg[0]] = splitArg[1];
-        }
-      } else if (args[i].includes("--")) {
-        if (args.length - 1 === i || args[i + 1].includes("--")) {
-          if (_options === null) {
-            _options = [args[i]];
-          } else {
-            _options.push(args[i]);
-          }
-        } else {
-          if (_arguments === null) {
-            _arguments = {
-              [args[i]]: args[i + 1],
-            };
-          } else {
-            _arguments[args[i]] = args[i + 1];
-          }
-        }
-      }
-    }
-
-    return {
-      base: _base,
-      args: _arguments,
-      options: _options,
-    };
-  }
-
-  protected moveCursorToInputStart() {
-    this.currentCursorPos = {
-      x: this.originalCursorPos.x + this.prefix.length,
-      y: this.originalCursorPos.y,
-    };
-    this.moveCursorToSavedCurrentPos();
-  }
-
-  protected foregroundRed(str: string) {
-    return `\x1b[31m${str}\x1b[0m`;
-  }
-  protected foregroundGreen(str: string) {
-    return `\x1b[32m${str}\x1b[0m`;
-  }
-}
-
-class CommandLineInterface extends TerminalBase {
+class OnFireCLI extends CommandLineInterface {
   input = "";
+  private cancelPendingRenders = false;
+  private isHelpProcessRunning = false;
   private listItemIndex: number = 0;
   private itemList: Array<string> = [];
   private firebaseCommands: {
-    [key: string]: {
-      label: string;
-      usage: string | null;
-      options: Array<{
-        option: string;
-        hint: string | null;
-        description: string;
-      }>;
-    };
+    [key: string]: CommandConfig;
   };
 
   constructor({
@@ -204,7 +54,7 @@ class CommandLineInterface extends TerminalBase {
       const command = slicedList[i];
       if (command !== undefined) {
         const _out = `${command} -> ${this.firebaseCommands[command].label}`;
-        const msg = i === 0 ? `${this.foregroundGreen(_out)}` : _out;
+        const msg = i === 0 ? `${this.textGreen(_out)}` : _out;
         console.log(`${msg}\x1b[K`);
       } else {
         console.log(`-\x1b[K`);
@@ -214,7 +64,6 @@ class CommandLineInterface extends TerminalBase {
     this.moveCursorToSavedCurrentPos();
   }
 
-  isHelpProcessRunning = false;
   private async loadCommandHelp(cmd: string) {
     if (!this.isHelpProcessRunning) {
       this.isHelpProcessRunning = true;
@@ -222,19 +71,43 @@ class CommandLineInterface extends TerminalBase {
       try {
         const help = await FirebaseCommands.getCommadHelp(cmd);
         this.firebaseCommands[cmd].usage = help.usage;
-        this.firebaseCommands[cmd].options = help.options;
+        this.firebaseCommands[cmd].options = help.options.reduce(
+          (acc, curr) => (
+            (acc[curr.option] = {
+              option: curr.option,
+              hint: curr.hint,
+              description: curr.description,
+            }),
+            acc
+          ),
+          {}
+        );
         this.isHelpProcessRunning = false;
         this.renderCommandHelp();
       } catch (error) {
         process.stdout.write(`\r\x1b[K`);
-        console.log(`${this.foregroundRed("Error:")} ${error.message}`);
+        console.log(
+          `${this.textBold(this.textRed("Error:"))} ${error.message}`
+        );
         process.exit(1);
       }
     }
   }
 
+  private getTypedWord(): string {
+    const posX = this.currentCursorPos.x - this.prefix.length;
+    const words = this.input.split(" ");
+    for (let i = 0; i < words.length; i++) {
+      const currentLen = words.slice(0, i + 1).join("").length + i;
+      if (posX <= currentLen) {
+        return words[i];
+      }
+    }
+    return "";
+  }
+
   private renderCommandHelp() {
-    if (this.isHelpProcessRunning) return;
+    if (this.isHelpProcessRunning || this.cancelPendingRenders) return;
     const { base, args, options } = this.formatArguments(this.input);
     this.clearTerminalDownward();
     console.log("");
@@ -242,22 +115,53 @@ class CommandLineInterface extends TerminalBase {
     if (cmdConfig !== undefined && cmdConfig.usage === null) {
       this.loadCommandHelp(base);
     } else if (cmdConfig !== undefined) {
+      const typedWord = this.getTypedWord();
       const _options = this.firebaseCommands[base].options;
       if (_options) {
-        const list = _options;
-        const filteredList = list
-          .map((val) => val.option)
-          .filter((_option) => _option.startsWith("--")); // TODO: implement fitler logic. Would need to detect the current word being hovered over.
+        const list = Object.keys(_options);
+        const argList = Object.keys(args);
+        const filteredList = list.filter(
+          (_option) =>
+            _option.startsWith(typedWord) &&
+            ((!argList.includes(_option) && !options.includes(_option)) ||
+              _option === typedWord)
+        );
         this.itemList = filteredList;
 
         const slicedList = filteredList.slice(this.listItemIndex);
 
-        console.log(`Usage: ${cmdConfig.usage}`);
+        const missingArgs: Array<CommandOptionsConfig> = [];
+        for (let option of list) {
+          if (_options[option].hint !== null && options.includes(option)) {
+            missingArgs.push(_options[option]);
+          }
+        }
+
+        if (missingArgs.length > 0) {
+          const msg = [];
+          for (let missingArg of missingArgs) {
+            msg.push(
+              `${missingArg.option} ${this.textBold(
+                this.textYellow(missingArg.hint)
+              )}`
+            );
+          }
+          console.log(
+            `${this.textBold(this.textRed("Missing:"))} ${msg.join(", ")}`
+          );
+        } else {
+          console.log(
+            `${this.textBold(this.textYellow("Usage:"))} ${cmdConfig.usage}`
+          );
+        }
+
         for (let i = 0; i < this.maxItemShown; i++) {
           const _option = slicedList[i];
           if (_option !== undefined) {
-            const _out = `${_option} -> ${_options[i].description}`;
-            const msg = i === 0 ? `${this.foregroundGreen(_out)}` : _out;
+            const _out = `${_option} ${_options[_option].hint || ""} -> ${
+              _options[_option].description
+            }`;
+            const msg = i === 0 ? `${this.textGreen(_out)}` : _out;
             console.log(`${msg}\x1b[K`);
           } else {
             console.log(`-\x1b[K`);
@@ -267,7 +171,7 @@ class CommandLineInterface extends TerminalBase {
         this.loadCommandHelp(base);
       }
     } else {
-      console.log(`${this.foregroundRed("Error:")} Command not found`);
+      console.log(`${this.textBold(this.textRed("Error:"))} Command not found`);
     }
     this.moveCursorToSavedCurrentPos();
   }
@@ -287,22 +191,35 @@ class CommandLineInterface extends TerminalBase {
         this.shiftCursorPosition(slicedList[0].length);
         this.listItemIndex = 0;
       }
+    } else {
+      const typedWord = this.getTypedWord();
+      const list = Object.keys(this.firebaseCommands[base].options);
+      const argList = Object.keys(args);
+      const filteredList = list.filter(
+        (_option) =>
+          _option.startsWith(typedWord) &&
+          ((!argList.includes(_option) && !options.includes(_option)) ||
+            _option === typedWord)
+      );
+
+      this.itemList = filteredList;
+      const slicedList = filteredList.slice(this.listItemIndex);
+      if (slicedList[0] !== undefined) {
+        const xPos = this.currentCursorPos.x - this.prefix.length;
+        this.shiftCursorPosition(-typedWord.length);
+        process.stdout.write(`${slicedList[0]}${this.input.slice(xPos)}`);
+        this.input = `${this.input.slice(0, xPos - typedWord.length)}${
+          slicedList[0]
+        }${this.input.slice(xPos)}`;
+        this.shiftCursorPosition(slicedList[0].length);
+        this.listItemIndex = 0;
+      }
     }
   }
 
   private renderIO(newChar: string = "", tabCompletion: boolean = false) {
     if (tabCompletion) {
       this.handleTabCompletion();
-      //   const autoCompletedInput = this.getSelectedItemFromList(
-      //     this.firebaseCommands
-      //   );
-      // process.stdout.cursorTo(this.currentCursorPos.x - 2);
-      //   const cmdSection = autoCompletedInput.value;
-      //   this.input = `${cmdSection} `;
-      // process.stdout.write(this.input);
-      //   this.shiftCursorPosition(this.input.length);
-      //   this.listItemIndex = 0;
-      //   // this.loadCommandOptions();
     } else {
       process.stdout.cursorTo(this.currentCursorPos.x - newChar.length);
       process.stdout.write(
@@ -312,27 +229,93 @@ class CommandLineInterface extends TerminalBase {
       );
     }
     this.moveCursorToSavedCurrentPos();
-    // const base = this.input.split(" ")[0];
-    // // if (this.input.split(" ").length === 1) {
-    // if (
-    //   base !== "" &&
-    //   this.firebaseCommands.filter((cmdInfo) => base.includes(cmdInfo.value))
-    //     .length !== 0
-    // ) {
-    //   this.renderCommandHelp();
-    // } else {
-    const { base, args, options } = this.formatArguments(this.input);
+    const { base } = this.formatArguments(this.input);
     if (base.length + this.prefix.length >= this.currentCursorPos.x) {
       this.renderCommandList();
     } else {
       this.renderCommandHelp();
     }
-    // }
-    // this.lastBaseCommand =
-    //   base !== this.lastBaseCommand ? base : this.lastBaseCommand;
-    // } else {
-    // this.showCommandOptions();
-    // }
+  }
+
+  private onExit() {
+    this.clearTerminalDownward();
+    console.log("");
+    console.log(`${this.textGreen("OnFire:")} exit`);
+  }
+
+  private async runCommand() {
+    const { base } = this.formatArguments(this.input);
+    if (base === "exit" || base === "stopdropandroll") {
+      process.exit();
+    }
+    this.clearTerminalDownward();
+    console.log(`\x1b[K`);
+    process.stdin.removeListener("keypress", (str, key) => {
+      this.keyPressListener(str, key);
+    });
+
+    process.stdin.pause();
+
+    const spawnCommands = this.input.trim().split(" ");
+    const firebaseSpawn = FirebaseCommands.runCommand(
+      "firebase",
+      [...spawnCommands],
+      {
+        stdio: "inherit",
+      }
+    );
+
+    firebaseSpawn.on("spawn", () => {
+      this.cancelPendingRenders = true;
+      process.stdout.cursorTo(0);
+    });
+
+    firebaseSpawn.on("exit", async (code) => {
+      this.cancelPendingRenders = false;
+      process.stdout.cursorTo(0);
+      const exitMessage =
+        code === 0
+          ? `${this.textGreen(
+              "OnFire:"
+            )} Command finished with exit code ${this.textGreen(
+              code.toString()
+            )}\n`
+          : `${this.textRed(
+              "OnFire:"
+            )} Command finished with exit code ${this.textRed(
+              code.toString()
+            )}\n`;
+      console.log(exitMessage);
+      process.on("SIGINT", function () {
+        process.exit(1);
+      });
+
+      this.createTerminalBuffer();
+      this.originalCursorPos = await this.getCursorPosition();
+      // Shift the cursor position
+      this.originalCursorPos = {
+        x: this.originalCursorPos.x - 1,
+        y: this.originalCursorPos.y - 1,
+      };
+      this.currentCursorPos = { ...this.originalCursorPos };
+      process.stdin.setRawMode(true);
+      process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
+      this.shiftCursorPosition(this.prefix.length);
+
+      if (code === 0) {
+        this.input = "";
+        this.moveCursorToInputStart();
+        this.renderCommandList();
+      } else {
+        process.stdout.write(this.input);
+        this.shiftCursorPosition(this.input.length);
+        if (base.length + this.prefix.length >= this.currentCursorPos.x) {
+          this.renderCommandList();
+        } else {
+          this.renderCommandHelp();
+        }
+      }
+    });
   }
 
   private keyPressListener(str: string, key: any) {
@@ -353,15 +336,10 @@ class CommandLineInterface extends TerminalBase {
         this.currentCursorPos.x -= 1;
       }
     } else if (key.name === "return") {
-      // console.log(`Data ${this.input}`);
-      // this.formatArguments();
-      // this.runCommand();
+      this.listItemIndex = 0;
       this.createTerminalBuffer();
       this.clearTerminalDownward();
-      console.log("\n");
-      console.log("\n");
-      console.log(this.input);
-      process.exit();
+      this.runCommand();
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
         this.listItemIndex -= 1;
@@ -369,7 +347,6 @@ class CommandLineInterface extends TerminalBase {
       }
     } else if (key.name === "down") {
       if (this.listItemIndex < this.itemList.length - 1) {
-        // if (this.listItemIndex < 4) {
         this.listItemIndex += 1;
         render = true;
       }
@@ -425,14 +402,23 @@ class CommandLineInterface extends TerminalBase {
       );
     } catch (error) {
       process.stdout.write(`\r\x1b[K`);
-      console.log(`${this.foregroundRed("Error:")} ${error.message}`);
+      console.log(`${this.textBold(this.textRed("Error:"))} ${error.message}`);
       process.exit(1);
     }
+    this.firebaseCommands["exit"] = {
+      label: "Exit the OnFire CLI",
+      usage: null,
+      options: null,
+    };
+    this.firebaseCommands["stopdropandroll"] = {
+      label: "Exit the OnFire CLI same as 'exit'",
+      usage: null,
+      options: null,
+    };
     process.stdout.write(`\r\x1b[K`);
     clearInterval(loading);
 
     readline.emitKeypressEvents(process.stdin);
-    console.log(this.firebaseCommands);
     this.createTerminalBuffer();
     this.originalCursorPos = await this.getCursorPosition();
     // Shift the cursor position
@@ -443,8 +429,7 @@ class CommandLineInterface extends TerminalBase {
     this.currentCursorPos = { ...this.originalCursorPos };
 
     process.stdin.setRawMode(true);
-    process.stdout.write(this.prefix);
-    // console.log(this.currentCursorPos.x)
+    process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
     this.shiftCursorPosition(prefixLen);
     this.renderCommandList();
     process.stdin.setRawMode(true);
@@ -453,11 +438,10 @@ class CommandLineInterface extends TerminalBase {
     });
 
     process.on("exit", () => {
-      this.clearTerminalDownward();
-      console.log("MAIN_EXIT");
+      this.onExit();
     });
   }
 }
 
-const cli = new CommandLineInterface({ prefix: "> " });
+const cli = new OnFireCLI({ prefix: "> " });
 cli.init();
