@@ -1,9 +1,13 @@
 {
   "name": "onfire-cli",
   "version": "0.0.1",
-  "description": "A CLI that extend the Firebase CLI",
+  "description": "A CLI that extends the Firebase CLI",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amalej/onfire-cli"
+  },
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
@@ -17,7 +21,8 @@
   ],
   "keywords": [
     "Firebase",
-    "CLI"
+    "CLI",
+    "autocomplete"
   ],
   "author": "Alejandro Marco Alejandre",
   "license": "ISC",
