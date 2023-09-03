@@ -12,6 +12,10 @@ interface OptionConfiguration {
   description: string;
 }
 
+interface SpawnError extends Error {
+  code?: string;
+}
+
 const COMMAND_TIMEOUT = 10000;
 
 export class FirebaseCommands {
@@ -23,7 +27,7 @@ export class FirebaseCommands {
         firebaseHelp.kill();
         reject(
           new Error(
-            `Failed to load commands via \`firebase --help\`. Promise timed out after ${COMMAND_TIMEOUT} ms`
+            `Failed to load commands via \`firebase --help\`. Promise timed out after ${COMMAND_TIMEOUT} ms, re-run the command.`
           )
         );
       }, COMMAND_TIMEOUT);
@@ -54,6 +58,14 @@ export class FirebaseCommands {
         clearTimeout(timer);
         resolve("OK");
       });
+
+      firebaseHelp.on("error", (error: SpawnError) => {
+        if (error.code === "ENOENT") {
+          reject(new Error(`Firebase CLI not found.`));
+        } else {
+          new Error(`Unexpected error was raised. ${error.message}`);
+        }
+      });
     });
     return commandConfigList;
   }
@@ -65,7 +77,7 @@ export class FirebaseCommands {
       const timer = setTimeout(() => {
         reject(
           new Error(
-            `Failed to load commands via \`firebase --help\`. Promise timed out after ${COMMAND_TIMEOUT} ms`
+            `Failed to load commands via \`firebase --help\`. Promise timed out after ${COMMAND_TIMEOUT} ms, re-run the command.`
           )
         );
       }, COMMAND_TIMEOUT);
