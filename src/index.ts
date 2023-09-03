@@ -114,16 +114,28 @@ class OnFireCLI extends CommandLineInterface {
     }
   }
 
-  private getTypedWord(): string {
+  private getTypedWord(): {
+    word: string;
+    start: number;
+    end: number;
+  } {
     const posX = this.currentCursorPos.x - this.prefix.length;
     const words = this.input.split(" ");
     for (let i = 0; i < words.length; i++) {
       const currentLen = words.slice(0, i + 1).join("").length + i;
       if (posX <= currentLen) {
-        return words[i];
+        return {
+          word: words[i],
+          start: currentLen - words[i].length,
+          end: currentLen,
+        };
       }
     }
-    return "";
+    return {
+      word: "",
+      start: posX,
+      end: posX,
+    };
   }
 
   private renderCommandHelp() {
@@ -142,9 +154,9 @@ class OnFireCLI extends CommandLineInterface {
         const argList = Object.keys(args);
         const filteredList = list.filter(
           (_option) =>
-            _option.startsWith(typedWord) &&
+            _option.startsWith(typedWord.word) &&
             ((!argList.includes(_option) && !options.includes(_option)) ||
-              _option === typedWord)
+              _option === typedWord.word)
         );
         this.itemList = filteredList;
 
@@ -221,20 +233,22 @@ class OnFireCLI extends CommandLineInterface {
       const argList = Object.keys(args);
       const filteredList = list.filter(
         (_option) =>
-          _option.startsWith(typedWord) &&
+          _option.startsWith(typedWord.word) &&
           ((!argList.includes(_option) && !options.includes(_option)) ||
-            _option === typedWord)
+            _option === typedWord.word)
       );
 
       this.itemList = filteredList;
       const slicedList = filteredList.slice(this.listItemIndex);
       if (slicedList[0] !== undefined) {
         const xPos = this.currentCursorPos.x - this.prefix.length;
-        this.shiftCursorPosition(-typedWord.length);
-        process.stdout.write(`${slicedList[0]}${this.input.slice(xPos)}`);
-        this.input = `${this.input.slice(0, xPos - typedWord.length)}${
+        this.shiftCursorPosition(-(xPos - typedWord.start));
+        process.stdout.write(
+          `${slicedList[0]}${this.input.slice(typedWord.end)}`
+        );
+        this.input = `${this.input.slice(0, typedWord.start)}${
           slicedList[0]
-        }${this.input.slice(xPos)}`;
+        }${this.input.slice(typedWord.end)}`;
         this.shiftCursorPosition(slicedList[0].length);
         this.listItemIndex = 0;
       }
@@ -360,7 +374,7 @@ class OnFireCLI extends CommandLineInterface {
         this.currentCursorPos.x -= 1;
       }
     } else if (key.name === "return") {
-      const { base, args, options } = this.formatArguments(this.input);
+      const { base, args, options } = this.formatArguments(this.input); // Used for debugging
       this.moveCursorToInputStart();
       this.shiftCursorPosition(this.input.length);
       this.listItemIndex = 0;
