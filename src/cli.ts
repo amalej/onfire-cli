@@ -98,10 +98,10 @@ export class CommandLineInterface {
         } else {
           _arguments[splitArg[0]] = splitArg[1];
         }
-      } else if (args[i].includes("--")) {
+      } else if (args[i].startsWith("-")) {
         if (
           args.length - 1 === i ||
-          args[i + 1].includes("--") ||
+          args[i + 1].startsWith("-") ||
           args[i + 1] === ""
         ) {
           if (_options === null) {
