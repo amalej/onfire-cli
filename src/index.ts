@@ -3,6 +3,7 @@
 import readline from "readline";
 import { FirebaseCommands } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
+import { ChildProcess } from "child_process";
 
 interface CommandConfig {
   label: string;
@@ -21,6 +22,7 @@ class OnFireCLI extends CommandLineInterface {
   input = "";
   private cancelPendingRenders = false;
   private isHelpProcessRunning = false;
+  private firebaseSpawn: ChildProcess | null = null;
   private listItemIndex: number = 0;
   private itemList: Array<string> = [];
   private firebaseCommands: {
@@ -53,8 +55,13 @@ class OnFireCLI extends CommandLineInterface {
     for (let i = 0; i < this.maxItemShown; i++) {
       const command = slicedList[i];
       if (command !== undefined) {
-        const _out = `${command} -> ${this.firebaseCommands[command].label}`;
-        const msg = i === 0 ? `${this.textGreen(_out)}` : _out;
+        const cmdLabel = `-> ${this.firebaseCommands[command].label}`;
+        const msg =
+          i === 0
+            ? `${this.textGreen(this.textBold(command))} ${this.textGreen(
+                cmdLabel
+              )}`
+            : `${this.textBold(command)} ${cmdLabel}`;
         console.log(`${msg}\x1b[K`);
       } else {
         console.log(`-\x1b[K`);
@@ -69,6 +76,7 @@ class OnFireCLI extends CommandLineInterface {
       this.isHelpProcessRunning = true;
       process.stdout.write("Loading");
       try {
+        // Get the options for the command
         const help = await FirebaseCommands.getCommadHelp(cmd);
         this.firebaseCommands[cmd].usage = help.usage;
         this.firebaseCommands[cmd].options = help.options.reduce(
@@ -82,6 +90,18 @@ class OnFireCLI extends CommandLineInterface {
           ),
           {}
         );
+
+        // Add default options
+        this.firebaseCommands[cmd].options["--project"] = {
+          option: "--project",
+          hint: "<alias_or_project_id>",
+          description: "the Firebase project to use for this command",
+        };
+        this.firebaseCommands[cmd].options["--debug"] = {
+          option: "--debug",
+          hint: null,
+          description: "print verbose debug output and keep a debug log file",
+        };
         this.isHelpProcessRunning = false;
         this.renderCommandHelp();
       } catch (error) {
@@ -158,10 +178,14 @@ class OnFireCLI extends CommandLineInterface {
         for (let i = 0; i < this.maxItemShown; i++) {
           const _option = slicedList[i];
           if (_option !== undefined) {
-            const _out = `${_option} ${_options[_option].hint || ""} -> ${
-              _options[_option].description
-            }`;
-            const msg = i === 0 ? `${this.textGreen(_out)}` : _out;
+            const optString = `${_option} ${_options[_option].hint || ""}`;
+            const optDescription = `-> ${_options[_option].description}`;
+            const msg =
+              i === 0
+                ? `${this.textGreen(this.textBold(optString))} ${this.textGreen(
+                    optDescription
+                  )}`
+                : `${this.textBold(optString)} ${optDescription}`;
             console.log(`${msg}\x1b[K`);
           } else {
             console.log(`-\x1b[K`);
@@ -250,14 +274,11 @@ class OnFireCLI extends CommandLineInterface {
     }
     this.clearTerminalDownward();
     console.log(`\x1b[K`);
-    process.stdin.removeListener("keypress", (str, key) => {
-      this.keyPressListener(str, key);
-    });
 
     process.stdin.pause();
 
     const spawnCommands = this.input.trim().split(" ");
-    const firebaseSpawn = FirebaseCommands.runCommand(
+    this.firebaseSpawn = FirebaseCommands.runCommand(
       "firebase",
       [...spawnCommands],
       {
@@ -265,12 +286,13 @@ class OnFireCLI extends CommandLineInterface {
       }
     );
 
-    firebaseSpawn.on("spawn", () => {
+    this.firebaseSpawn.on("spawn", () => {
       this.cancelPendingRenders = true;
       process.stdout.cursorTo(0);
+      process.stdin.setRawMode(false);
     });
 
-    firebaseSpawn.on("exit", async (code) => {
+    this.firebaseSpawn.on("exit", async (code) => {
       this.cancelPendingRenders = false;
       process.stdout.cursorTo(0);
       const exitMessage =
@@ -278,17 +300,16 @@ class OnFireCLI extends CommandLineInterface {
           ? `${this.textGreen(
               "OnFire:"
             )} Command finished with exit code ${this.textGreen(
-              code.toString()
+              code?.toString()
             )}\n`
           : `${this.textRed(
               "OnFire:"
             )} Command finished with exit code ${this.textRed(
-              code.toString()
+              code?.toString()
             )}\n`;
       console.log(exitMessage);
-      process.on("SIGINT", function () {
-        process.exit(1);
-      });
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
 
       this.createTerminalBuffer();
       this.originalCursorPos = await this.getCursorPosition();
@@ -315,6 +336,7 @@ class OnFireCLI extends CommandLineInterface {
           this.renderCommandHelp();
         }
       }
+      this.firebaseSpawn = null;
     });
   }
 
@@ -326,7 +348,9 @@ class OnFireCLI extends CommandLineInterface {
     const xPos = this.currentCursorPos.x - prefixLen;
 
     if (key.ctrl == true && key.name == "c") {
-      process.exit();
+      if (this.firebaseSpawn === null) {
+        process.exit();
+      }
     } else if (key.name === "backspace") {
       if (xPos > 0) {
         render = true;
@@ -336,6 +360,9 @@ class OnFireCLI extends CommandLineInterface {
         this.currentCursorPos.x -= 1;
       }
     } else if (key.name === "return") {
+      const { base, args, options } = this.formatArguments(this.input);
+      this.moveCursorToInputStart();
+      this.shiftCursorPosition(this.input.length);
       this.listItemIndex = 0;
       this.createTerminalBuffer();
       this.clearTerminalDownward();
@@ -433,6 +460,9 @@ class OnFireCLI extends CommandLineInterface {
     this.shiftCursorPosition(prefixLen);
     this.renderCommandList();
     process.stdin.setRawMode(true);
+    process.on("SIGINT", function () {
+      console.log(`\x1b[32mOnFire:\x1b[0m Received SIGINT signal`);
+    });
     process.stdin.on("keypress", (str, key) => {
       this.keyPressListener(str, key);
     });
