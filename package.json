@@ -9,6 +9,9 @@
     "build:watch": "tsc --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "bin": {
+    "onfire": "./dist/index.js"
+  },
   "files": [
     "dist"
   ],
