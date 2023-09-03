@@ -1,6 +1,6 @@
 {
   "name": "onfire-cli",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A CLI that extends the Firebase CLI",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
