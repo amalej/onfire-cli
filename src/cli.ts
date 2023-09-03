@@ -21,7 +21,7 @@ export class CommandLineInterface {
     maxItemShown = 4,
   }: { prefix?: string; maxItemShown?: number } = {}) {
     this.prefix = prefix;
-    this.displayDownBuffer = Math.ceil(maxItemShown * 2);
+    this.displayDownBuffer = Math.ceil(maxItemShown * 2) + 4;
     this.maxItemShown = maxItemShown;
   }
 
