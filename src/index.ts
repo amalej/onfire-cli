@@ -4,7 +4,6 @@ import readline from "readline";
 import { FirebaseCommands } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
 import { ChildProcess } from "child_process";
-
 interface CommandConfig {
   label: string;
   usage: string;

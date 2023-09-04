@@ -15,7 +15,7 @@
         ],
         "declaration": true,
         "sourceMap": true,
-        "outDir": "dist"
+        "outDir": "dist",
     },
     "lib": [
         "es2015"

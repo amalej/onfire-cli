@@ -1,4 +1,4 @@
-import { ChildProcess, SpawnOptions } from "child_process";
+import { ChildProcess, SpawnOptions, exec } from "child_process";
 import spawn from "cross-spawn";
 
 interface CommandConfiguration {
@@ -22,7 +22,8 @@ export class FirebaseCommands {
   static async getCommandConfigList(): Promise<Array<CommandConfiguration>> {
     const commandConfigList: Array<CommandConfiguration> = [];
     await new Promise((resolve, reject) => {
-      const firebaseHelp = spawn("firebase", ["--help"]);
+      let buf = ""; // child process stdout data buffer
+      const firebaseHelp = exec("firebase help");
       const timer = setTimeout(() => {
         firebaseHelp.kill();
         reject(
@@ -32,10 +33,13 @@ export class FirebaseCommands {
         );
       }, COMMAND_TIMEOUT);
 
+      firebaseHelp.stdout.setEncoding("utf8");
       firebaseHelp.stdout.on("data", (data) => {
-        const _outputCommand: string = data
-          .toString()
-          .replace(/^(.*)commands:/gims, "");
+        buf += data;
+      });
+
+      firebaseHelp.stdout.on("end", () => {
+        const _outputCommand: string = buf.replace(/^(.*)commands:/gims, "");
         const commandsListString = _outputCommand.split("\n") as Array<string>;
         for (let commandString of commandsListString) {
           const commandRegex: RegExp = /^[a-z:]+$/g;
@@ -82,7 +86,7 @@ export class FirebaseCommands {
         );
       }, COMMAND_TIMEOUT);
 
-      const firebaseHelp = spawn("firebase", [cmd.trim(), "--help"]);
+      const firebaseHelp = spawn("firebase", [cmd.trim(), "--help"]); // TODO: Consider changing to exec. Not really buggy right now though.
       firebaseHelp.stdout.on("data", (data) => {
         try {
           usage = data
