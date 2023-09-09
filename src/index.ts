@@ -11,12 +11,21 @@ interface CommandConfig {
   options: {
     [key: string]: CommandOptionsConfig;
   } | null;
+  args: {
+    [key: string]: CommandArgsConfig;
+  } | null;
 }
 
 interface CommandOptionsConfig {
   option: string;
   hint: string;
   description: string;
+}
+
+interface CommandArgsConfig {
+  required: boolean;
+  name: string;
+  variadic: boolean;
 }
 
 class OnFireCLI extends CommandLineInterface {
@@ -40,6 +49,24 @@ class OnFireCLI extends CommandLineInterface {
       maxItemShown,
     });
     this.firebaseCli = new FirebaseCommands();
+  }
+
+  private getCurrentCommandNullableOptions() {
+    const { base } = this.getCommandParams(this.input);
+    if (this.firebaseCommands[base] === undefined) {
+      return [];
+    }
+    return Object.keys(this.firebaseCommands[base].options).filter(
+      (opt) => this.firebaseCommands[base].options[opt].hint === null
+    );
+  }
+
+  private getCurrentCommandArgs() {
+    const { base } = this.getCommandParams(this.input);
+    if (this.firebaseCommands[base] === undefined) {
+      return [];
+    }
+    return Object.keys(this.firebaseCommands[base].args);
   }
 
   private renderCommandList() {
@@ -98,9 +125,9 @@ class OnFireCLI extends CommandLineInterface {
     };
   }
 
-  private renderCommandHelp() {
+  private renderCommandOptions() {
     if (this.isHelpProcessRunning || this.cancelPendingRenders) return;
-    const { base, args, options } = this.formatArguments(this.input);
+    const { base, args, options } = this.getCommandParams(this.input);
     this.clearTerminalDownward();
     console.log("");
     const cmdConfig = this.firebaseCommands[base];
@@ -166,8 +193,15 @@ class OnFireCLI extends CommandLineInterface {
     this.moveCursorToSavedCurrentPos();
   }
 
+  private renderCommandArgs() {
+    this.clearTerminalDownward();
+    console.log("");
+    console.log("PROVIDE ARGS");
+    this.moveCursorToSavedCurrentPos();
+  }
+
   private handleTabCompletion() {
-    const { base, args, options } = this.formatArguments(this.input);
+    const { base, args, options } = this.getCommandParams(this.input);
     if (base.length + this.prefix.length >= this.currentCursorPos.x) {
       const filteredList = Object.keys(this.firebaseCommands).filter(
         (command) => command.startsWith(base)
@@ -221,11 +255,16 @@ class OnFireCLI extends CommandLineInterface {
       );
     }
     this.moveCursorToSavedCurrentPos();
-    const { base } = this.formatArguments(this.input);
+    const _options = this.getCurrentCommandNullableOptions();
+    const typedWord = this.getTypedWord();
+    const { base, input } = this.getCommandParams(this.input, _options);
     if (base.length + this.prefix.length >= this.currentCursorPos.x) {
       this.renderCommandList();
+    } else if (input.length > 0 && input.includes(typedWord.word)) {
+      // Handle required inputs for commands
+      this.renderCommandArgs();
     } else {
-      this.renderCommandHelp();
+      this.renderCommandOptions();
     }
   }
 
@@ -236,7 +275,7 @@ class OnFireCLI extends CommandLineInterface {
   }
 
   private async runCommand() {
-    const { base } = this.formatArguments(this.input);
+    const { base } = this.getCommandParams(this.input);
     if (base === "exit" || base === "stopdropandroll") {
       process.exit();
     }
@@ -301,7 +340,7 @@ class OnFireCLI extends CommandLineInterface {
         if (base.length + this.prefix.length >= this.currentCursorPos.x) {
           this.renderCommandList();
         } else {
-          this.renderCommandHelp();
+          this.renderCommandOptions();
         }
       }
       this.firebaseSpawn = null;
@@ -328,12 +367,23 @@ class OnFireCLI extends CommandLineInterface {
         this.currentCursorPos.x -= 1;
       }
     } else if (key.name === "return") {
-      const { base, args, options, input } = this.formatArguments(this.input); // Used for debugging
+      const _options = this.getCurrentCommandNullableOptions();
+      const { base, args, options, input } = this.getCommandParams(
+        this.input,
+        _options
+      ); // Used for debugging
       this.moveCursorToInputStart();
       this.shiftCursorPosition(this.input.length);
       this.listItemIndex = 0;
       this.createTerminalBuffer();
       this.clearTerminalDownward();
+      // console.log(" ------------------------------ ");
+      // console.log(_options);
+      // console.log(this.input);
+      // console.log(base);
+      // console.log(args);
+      // console.log(options);
+      // console.log(input);
       this.runCommand();
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
@@ -392,11 +442,13 @@ class OnFireCLI extends CommandLineInterface {
       description: "Exit the OnFire CLI",
       usage: null,
       options: null,
+      args: null,
     };
     this.firebaseCommands["stopdropandroll"] = {
       description: "Exit the OnFire CLI same as 'exit'",
       usage: null,
       options: null,
+      args: null,
     };
     process.stdout.write(`\r\x1b[K`);
     clearInterval(loading);

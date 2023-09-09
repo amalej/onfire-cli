@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --coverage --verbose"
   },
   "bin": {
     "onfire": "./dist/index.js"
@@ -27,16 +27,16 @@
   "author": "Alejandro Marco Alejandre",
   "license": "ISC",
   "devDependencies": {
+    "@types/jest": "^29.5.3",
     "@types/cross-spawn": "^6.0.2",
     "@types/inquirer": "^9.0.3",
     "@types/inquirer-autocomplete-prompt": "^3.0.0",
     "@types/node": "^20.4.4",
+    "jest": "^29.6.1",
+    "ts-jest": "^29.1.1",
     "typescript": "^5.1.6"
   },
   "dependencies": {
-    "cross-spawn": "^7.0.3",
-    "inquirer": "^8.0.0",
-    "inquirer-autocomplete-prompt": "^2.0.0",
-    "omelette": "^0.4.17"
+    "cross-spawn": "^7.0.3"
   }
 }

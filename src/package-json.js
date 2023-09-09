@@ -1,2 +1,2 @@
-var pjson = require('../package.json');
-module.exports = pjson
+var packageJson = require('../package.json');
+module.exports = packageJson
