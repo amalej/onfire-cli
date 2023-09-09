@@ -76,7 +76,10 @@ export class CommandLineInterface {
     process.stdout.cursorTo(this.currentCursorPos.x, this.currentCursorPos.y);
   }
 
-  protected formatArguments(command: string): {
+  protected getCommandParams(
+    command: string,
+    options: Array<string> = []
+  ): {
     base: string;
     args: {
       [key: string]: string;
@@ -104,7 +107,8 @@ export class CommandLineInterface {
         if (
           args.length - 1 === i ||
           args[i + 1].startsWith("-") ||
-          args[i + 1] === ""
+          args[i + 1] === "" ||
+          options.includes(args[i])
         ) {
           if (_options === null) {
             _options = [args[i]];
@@ -120,9 +124,14 @@ export class CommandLineInterface {
             _arguments[args[i]] = args[i + 1];
           }
         }
-        i++; // TODO: This might introduce bugs, remove if it does.
+
+        if (!options.includes(args[i]) && !args[i + 1]?.startsWith("-")) {
+          i++; // TODO: This might introduce bugs, remove if it does.
+        }
       } else {
-        _input.push(args[i]);
+        if (args[i] !== "") {
+          _input.push(args[i]);
+        }
       }
     }
 
