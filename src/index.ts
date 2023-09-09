@@ -74,49 +74,6 @@ class OnFireCLI extends CommandLineInterface {
     this.moveCursorToSavedCurrentPos();
   }
 
-  private async loadCommandHelp(cmd: string) {
-    if (!this.isHelpProcessRunning) {
-      this.isHelpProcessRunning = true;
-      process.stdout.write("Loading");
-      try {
-        // Get the options for the command
-        const help = await FirebaseCommands.getCommadHelp(cmd);
-        this.firebaseCommands[cmd].usage = help.usage;
-        this.firebaseCommands[cmd].options = help.options.reduce(
-          (acc, curr) => (
-            (acc[curr.option] = {
-              option: curr.option,
-              hint: curr.hint,
-              description: curr.description,
-            }),
-            acc
-          ),
-          {}
-        );
-
-        // Add default options
-        this.firebaseCommands[cmd].options["--project"] = {
-          option: "--project",
-          hint: "<alias_or_project_id>",
-          description: "the Firebase project to use for this command",
-        };
-        this.firebaseCommands[cmd].options["--debug"] = {
-          option: "--debug",
-          hint: null,
-          description: "print verbose debug output and keep a debug log file",
-        };
-        this.isHelpProcessRunning = false;
-        this.renderCommandHelp();
-      } catch (error) {
-        process.stdout.write(`\r\x1b[K`);
-        console.log(
-          `${this.textBold(this.textRed("Error:"))} ${error.message}`
-        );
-        process.exit(1);
-      }
-    }
-  }
-
   private getTypedWord(): {
     word: string;
     start: number;
@@ -147,67 +104,61 @@ class OnFireCLI extends CommandLineInterface {
     this.clearTerminalDownward();
     console.log("");
     const cmdConfig = this.firebaseCommands[base];
-    if (cmdConfig !== undefined && cmdConfig.usage === null) {
-      this.loadCommandHelp(base);
-    } else if (cmdConfig !== undefined) {
+    if (cmdConfig !== undefined) {
       const typedWord = this.getTypedWord();
       const _options = this.firebaseCommands[base].options;
-      if (_options) {
-        const list = Object.keys(_options);
-        const argList = Object.keys(args);
-        const filteredList = list.filter(
-          (_option) =>
-            _option.startsWith(typedWord.word) &&
-            ((!argList.includes(_option) && !options.includes(_option)) ||
-              _option === typedWord.word)
+      const list = Object.keys(_options);
+      const argList = Object.keys(args);
+      const filteredList = list.filter(
+        (_option) =>
+          _option.startsWith(typedWord.word) &&
+          ((!argList.includes(_option) && !options.includes(_option)) ||
+            _option === typedWord.word)
+      );
+      this.itemList = filteredList;
+
+      const slicedList = filteredList.slice(this.listItemIndex);
+
+      const missingArgs: Array<CommandOptionsConfig> = [];
+      for (let option of list) {
+        if (_options[option].hint !== null && options.includes(option)) {
+          missingArgs.push(_options[option]);
+        }
+      }
+
+      if (missingArgs.length > 0) {
+        const msg = [];
+        for (let missingArg of missingArgs) {
+          msg.push(
+            `${missingArg.option} ${this.textBold(
+              this.textYellow(missingArg.hint)
+            )}`
+          );
+        }
+        console.log(
+          `${this.textBold(this.textRed("Missing:"))} ${msg.join(", ")}`
         );
-        this.itemList = filteredList;
-
-        const slicedList = filteredList.slice(this.listItemIndex);
-
-        const missingArgs: Array<CommandOptionsConfig> = [];
-        for (let option of list) {
-          if (_options[option].hint !== null && options.includes(option)) {
-            missingArgs.push(_options[option]);
-          }
-        }
-
-        if (missingArgs.length > 0) {
-          const msg = [];
-          for (let missingArg of missingArgs) {
-            msg.push(
-              `${missingArg.option} ${this.textBold(
-                this.textYellow(missingArg.hint)
-              )}`
-            );
-          }
-          console.log(
-            `${this.textBold(this.textRed("Missing:"))} ${msg.join(", ")}`
-          );
-        } else {
-          console.log(
-            `${this.textBold(this.textYellow("Usage:"))} ${cmdConfig.usage}`
-          );
-        }
-
-        for (let i = 0; i < this.maxItemShown; i++) {
-          const _option = slicedList[i];
-          if (_option !== undefined) {
-            const optString = `${_option} ${_options[_option].hint || ""}`;
-            const optDescription = `-> ${_options[_option].description}`;
-            const msg =
-              i === 0
-                ? `${this.textGreen(this.textBold(optString))} ${this.textGreen(
-                    optDescription
-                  )}`
-                : `${this.textBold(optString)} ${optDescription}`;
-            console.log(`${msg}\x1b[K`);
-          } else {
-            console.log(`-\x1b[K`);
-          }
-        }
       } else {
-        this.loadCommandHelp(base);
+        console.log(
+          `${this.textBold(this.textYellow("Usage:"))} ${cmdConfig.usage}`
+        );
+      }
+
+      for (let i = 0; i < this.maxItemShown; i++) {
+        const _option = slicedList[i];
+        if (_option !== undefined) {
+          const optString = `${_option} ${_options[_option].hint || ""}`;
+          const optDescription = `-> ${_options[_option].description}`;
+          const msg =
+            i === 0
+              ? `${this.textGreen(this.textBold(optString))} ${this.textGreen(
+                  optDescription
+                )}`
+              : `${this.textBold(optString)} ${optDescription}`;
+          console.log(`${msg}\x1b[K`);
+        } else {
+          console.log(`-\x1b[K`);
+        }
       }
     } else {
       console.log(`${this.textBold(this.textRed("Error:"))} Command not found`);
@@ -377,7 +328,7 @@ class OnFireCLI extends CommandLineInterface {
         this.currentCursorPos.x -= 1;
       }
     } else if (key.name === "return") {
-      const { base, args, options } = this.formatArguments(this.input); // Used for debugging
+      const { base, args, options, input } = this.formatArguments(this.input); // Used for debugging
       this.moveCursorToInputStart();
       this.shiftCursorPosition(this.input.length);
       this.listItemIndex = 0;
@@ -488,9 +439,6 @@ async function initializeApp() {
     console.log(`OnFire: Unknown args ${process.argv.slice(2).join(", ")}`);
     console.log(`Type 'onfire' to initialize the OnFire CLI`);
   }
-  // const firebase = new FirebaseCommands();
-  // const _out = await firebase.getCommandConfig();
-  // console.log(JSON.stringify(_out, null, 4));
 }
 
 initializeApp();

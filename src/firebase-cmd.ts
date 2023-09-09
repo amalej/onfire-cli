@@ -52,7 +52,19 @@ export class FirebaseCommands {
       npmSpawnPath.stdout.on("end", () => {
         clearTimeout(rejectTimout);
         const rootPath = bufferString.toString().trim();
-        this.client = require(`${rootPath}/firebase-tools`);
+        try {
+          this.client = require(`${rootPath}/firebase-tools`);
+        } catch (error) {
+          if (error.code === "MODULE_NOT_FOUND") {
+            reject(
+              new Error(
+                `Firebase Tools module not found. Install using 'npm install -g firebase-tools'`
+              )
+            );
+          } else {
+            new Error(`Unexpected error was raised. ${error.message}`);
+          }
+        }
         resolve(this.client);
       });
     });
@@ -67,7 +79,10 @@ export class FirebaseCommands {
       (comMap: any, com: any) => {
         comMap[com._name] = {
           command: com._name,
-          description: com._description,
+          description: (com._description || "No description").replace(
+            /\n.*/g,
+            ""
+          ),
           usage: `firebase ${com._name} [options] ${com._args
             .map((arg: FirebaseCommandArgs) => {
               let usage = arg.name;
