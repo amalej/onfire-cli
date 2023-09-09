@@ -4,9 +4,9 @@ import readline from "readline";
 import { FirebaseCommands } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
 import { ChildProcess } from "child_process";
-import packageJSON from "./packageJSON";
+import packageJson from "./package-json";
 interface CommandConfig {
-  label: string;
+  description: string;
   usage: string;
   options: {
     [key: string]: CommandOptionsConfig;
@@ -18,6 +18,7 @@ interface CommandOptionsConfig {
   hint: string;
   description: string;
 }
+
 class OnFireCLI extends CommandLineInterface {
   input = "";
   private cancelPendingRenders = false;
@@ -28,6 +29,7 @@ class OnFireCLI extends CommandLineInterface {
   private firebaseCommands: {
     [key: string]: CommandConfig;
   };
+  private firebaseCli: FirebaseCommands;
 
   constructor({
     prefix = "",
@@ -37,6 +39,7 @@ class OnFireCLI extends CommandLineInterface {
       prefix,
       maxItemShown,
     });
+    this.firebaseCli = new FirebaseCommands();
   }
 
   private renderCommandList() {
@@ -55,7 +58,7 @@ class OnFireCLI extends CommandLineInterface {
     for (let i = 0; i < this.maxItemShown; i++) {
       const command = slicedList[i];
       if (command !== undefined) {
-        const cmdLabel = `-> ${this.firebaseCommands[command].label}`;
+        const cmdLabel = `-> ${this.firebaseCommands[command].description}`;
         const msg =
           i === 0
             ? `${this.textGreen(this.textBold(command))} ${this.textGreen(
@@ -428,31 +431,19 @@ class OnFireCLI extends CommandLineInterface {
       process.stdout.write(".");
     }, 200);
     try {
-      this.firebaseCommands = (
-        await FirebaseCommands.getCommandConfigList()
-      ).reduce(
-        (acc, curr) => (
-          (acc[curr.command] = {
-            label: curr.description,
-            usage: null,
-            options: null,
-          }),
-          acc
-        ),
-        {}
-      );
+      this.firebaseCommands = await this.firebaseCli.getCommandConfig();
     } catch (error) {
       process.stdout.write(`\r\x1b[K`);
       console.log(`${this.textBold(this.textRed("Error:"))} ${error.message}`);
       process.exit(1);
     }
     this.firebaseCommands["exit"] = {
-      label: "Exit the OnFire CLI",
+      description: "Exit the OnFire CLI",
       usage: null,
       options: null,
     };
     this.firebaseCommands["stopdropandroll"] = {
-      label: "Exit the OnFire CLI same as 'exit'",
+      description: "Exit the OnFire CLI same as 'exit'",
       usage: null,
       options: null,
     };
@@ -487,16 +478,19 @@ class OnFireCLI extends CommandLineInterface {
   }
 }
 
-function initializeApp() {
+async function initializeApp() {
   const cli = new OnFireCLI({ prefix: "> " });
   if (process.argv.length <= 2) {
     cli.init();
   } else if (process.argv.includes("--version")) {
-    console.log(`OnFire: v${packageJSON.version}`);
+    console.log(`OnFire: v${packageJson.version}`);
   } else {
     console.log(`OnFire: Unknown args ${process.argv.slice(2).join(", ")}`);
     console.log(`Type 'onfire' to initialize the OnFire CLI`);
   }
+  // const firebase = new FirebaseCommands();
+  // const _out = await firebase.getCommandConfig();
+  // console.log(JSON.stringify(_out, null, 4));
 }
 
 initializeApp();
