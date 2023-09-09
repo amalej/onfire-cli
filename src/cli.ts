@@ -82,13 +82,15 @@ export class CommandLineInterface {
       [key: string]: string;
     };
     options: Array<string>;
+    input: Array<string>;
   } {
     const args = command.split(" ");
     let _base = args[0];
     let _arguments = {};
     let _options = [];
+    let _input = [];
     if (args === null) return null;
-    for (let i = 0; i < args.length; i++) {
+    for (let i = 1; i < args.length; i++) {
       if (args[i].includes("=")) {
         const splitArg = args[i].split("=");
         if (_arguments === null) {
@@ -118,6 +120,9 @@ export class CommandLineInterface {
             _arguments[args[i]] = args[i + 1];
           }
         }
+        i++; // TODO: This might introduce bugs, remove if it does.
+      } else {
+        _input.push(args[i]);
       }
     }
 
@@ -125,6 +130,7 @@ export class CommandLineInterface {
       base: _base,
       args: _arguments,
       options: _options,
+      input: _input,
     };
   }
 
