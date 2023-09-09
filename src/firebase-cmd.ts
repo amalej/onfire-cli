@@ -18,8 +18,133 @@ interface SpawnError extends Error {
 
 const COMMAND_TIMEOUT = 10000;
 
+interface FirebaseCommandArgs {
+  required: boolean;
+  name: string;
+  variadic: boolean;
+}
+
+interface FirebaseCommandOptions {
+  flags: string;
+  required: boolean;
+  optional: boolean;
+  mandatory: boolean;
+  negate: boolean;
+  long: string;
+  description: string;
+  defaultValue: string | boolean | number | null;
+}
+
 export class FirebaseCommands {
-  static async getCommandConfigList(): Promise<Array<CommandConfiguration>> {
+  client = null;
+  private async loadFirebaseModule() {
+    return new Promise((resolve, reject) => {
+      const rejectTimout = setTimeout(() => {
+        reject("Error");
+      }, COMMAND_TIMEOUT);
+      const npmSpawnPath = exec("npm root -g");
+
+      let bufferString = "";
+      npmSpawnPath.stdout.on("data", (data) => {
+        bufferString += data;
+      });
+
+      npmSpawnPath.stdout.on("end", () => {
+        clearTimeout(rejectTimout);
+        const rootPath = bufferString.toString().trim();
+        this.client = require(`${rootPath}/firebase-tools`);
+        resolve(this.client);
+      });
+    });
+  }
+
+  private wrapString(str: string, start: string, end: string) {
+    return `${start}${str}${end}`;
+  }
+
+  private getCommandsUsingModule() {
+    const commandConfig = this.client.cli.commands.reduce(
+      (comMap: any, com: any) => {
+        comMap[com._name] = {
+          command: com._name,
+          description: com._description,
+          usage: `firebase ${com._name} [options] ${com._args
+            .map((arg: FirebaseCommandArgs) => {
+              let usage = arg.name;
+              if (arg.variadic === true) {
+                usage = `...${usage}`;
+              }
+
+              if (arg.required === true) {
+                usage = this.wrapString(usage, "<", ">");
+              } else {
+                usage = this.wrapString(usage, "[", "]");
+              }
+
+              return usage;
+            })
+            .join(" ")}`,
+          options: {
+            ...com.options.reduce(function (
+              optMap: any,
+              opt: FirebaseCommandOptions
+            ) {
+              const [_option, _optionValue] = opt.flags
+                .replace(/.*(?=--)/, "")
+                .split(" ");
+              optMap[opt.long] = {
+                option: opt.long,
+                flags: opt.flags.replace(/.*(?=--)/, ""),
+                hint: _optionValue || null,
+                required: opt.required,
+                optional: opt.optional,
+                long: opt.long,
+                description: opt.description,
+                defaultValue: opt.defaultValue || null,
+              };
+              return optMap;
+            },
+            {}),
+            "--project": {
+              option: "--project",
+              flags: "--project <alias_or_project_id>",
+              hint: "<alias_or_project_id>",
+              description: "the Firebase project to use for this command",
+              required: false,
+              optional: true,
+              long: "--project",
+              defaultValue: null,
+            },
+            "--debug": {
+              option: "--debug",
+              flags: "--debug",
+              hint: null,
+              required: false,
+              optional: true,
+              long: "--debug",
+              description:
+                "print verbose debug output and keep a debug log file",
+              defaultValue: null,
+            },
+          },
+          args: com._args.reduce(function (
+            argMap: any,
+            arg: FirebaseCommandArgs
+          ) {
+            argMap[arg.name] = arg;
+            return argMap;
+          },
+          {}),
+        };
+        return comMap;
+      },
+      {}
+    );
+
+    return commandConfig;
+  }
+
+  private async getCommandsUsingHelp() {
     const commandConfigList: Array<CommandConfiguration> = [];
     await new Promise((resolve, reject) => {
       let buf = ""; // child process stdout data buffer
@@ -71,7 +196,12 @@ export class FirebaseCommands {
         }
       });
     });
-    return commandConfigList;
+  }
+
+  async getCommandConfig(): Promise<{ [key: string]: any }> {
+    await this.loadFirebaseModule();
+    const _out = this.getCommandsUsingModule();
+    return _out;
   }
 
   static async getCommadHelp(cmd: string) {
