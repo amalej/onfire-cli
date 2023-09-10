@@ -13,7 +13,7 @@ assignees: ''
 **firebase-tools**: 
 **node**: 
 
-## Bug Description
+## Bug description
 
 <!-- ENTER BUG DESCRIPTION -->
 
