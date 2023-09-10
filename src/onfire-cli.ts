@@ -134,7 +134,7 @@ export class OnFireCLI extends CommandLineInterface {
     const cmdConfig = this.firebaseCommands[base];
     if (cmdConfig !== undefined) {
       const typedWord = this.getTypedWord();
-      const _options = this.firebaseCommands[base].options;
+      const _options = this.firebaseCommands[base].options || {};
       const list = Object.keys(_options);
       const argList = Object.keys(args);
       const filteredList = list.filter(
@@ -431,13 +431,13 @@ export class OnFireCLI extends CommandLineInterface {
     // Attach custom commands
     this.firebaseCommands["exit"] = {
       description: "Exit the OnFire CLI",
-      usage: null,
+      usage: "exit",
       options: null,
       args: null,
     };
     this.firebaseCommands["stopdropandroll"] = {
       description: "Exit the OnFire CLI same as 'exit'",
-      usage: null,
+      usage: "stopdropandroll",
       options: null,
       args: null,
     };
