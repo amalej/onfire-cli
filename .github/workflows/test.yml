@@ -5,8 +5,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Perform the jest test
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install modules
         run: npm install
+      - name: Install `firebase-tools` module globally
+        run: npm install -g firebase-tools
       - name: Run jest
         run: npm run test
