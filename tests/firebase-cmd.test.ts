@@ -4,15 +4,25 @@ import { FirebaseCommands } from "../src/firebase-cmd";
 const COMMAND_TIMEOUT = 10000;
 const TEST_TIMEOUT = 10000;
 
-class MockFirebaseCommands extends FirebaseCommands {
+export class MockFirebaseCommands extends FirebaseCommands {
   async _loadFirebaseModule() {
     return await this.loadFirebaseModule();
   }
+
   async _wrapString(str: string, start: string, end: string) {
     return this.wrapString(str, start, end);
   }
+
   async _getCommandsUsingModule() {
     return this.getCommandsUsingModule();
+  }
+
+  _defaultOptions() {
+    return this.defaultOptions;
+  }
+
+  _getDefaultOptionsLen() {
+    return Object.keys(this.defaultOptions).length;
   }
 }
 
