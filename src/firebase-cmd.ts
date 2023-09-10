@@ -124,10 +124,10 @@ export class FirebaseCommands {
               option: "--project",
               flags: "--project <alias_or_project_id>",
               hint: "<alias_or_project_id>",
-              description: "the Firebase project to use for this command",
               required: false,
               optional: true,
               long: "--project",
+              description: "the Firebase project to use for this command",
               defaultValue: null,
             },
             "--debug": {
@@ -139,6 +139,17 @@ export class FirebaseCommands {
               long: "--debug",
               description:
                 "print verbose debug output and keep a debug log file",
+              defaultValue: null,
+            },
+            "--non-interactive": {
+              option: "--non-interactive",
+              flags: "--non-interactive",
+              hint: null,
+              required: false,
+              optional: true,
+              long: "--non-interactive",
+              description:
+                "error out of the command instead of waiting for prompts",
               defaultValue: null,
             },
           },
