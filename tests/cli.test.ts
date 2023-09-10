@@ -72,7 +72,19 @@ describe("Deconstuct commands", () => {
 
     expect(base).toBe("appdistribution:distribute");
     expect(options.includes("--debug")).toBe(true);
-    expect(input.includes("bin_file")).toBe(true);
+    expect(input[0]).toBe("bin_file");
+    expect(args["--app"]).toBe("app_id");
+  });
+
+  it("Should deconstuct 'appdistribution:distribute --debug --app app_id bin_file'", () => {
+    const command = `appdistribution:distribute --app app_id bin_file --debug`;
+    const { base, args, options, input } = cli._getCommandParams(command, [
+      "--debug",
+    ]);
+
+    expect(base).toBe("appdistribution:distribute");
+    expect(options.includes("--debug")).toBe(true);
+    expect(input[0]).toBe("bin_file");
     expect(args["--app"]).toBe("app_id");
   });
 });
