@@ -130,7 +130,7 @@ export class CommandLineInterface {
         }
       } else {
         if (args[i] !== "") {
-          _input.push(args[i]);
+          // _input.push(args[i]);
         }
       }
     }
