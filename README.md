@@ -14,199 +14,28 @@ https://github.com/amalej/onfire-cli/assets/78371908/275da358-9938-468f-acc1-e56
 
 ## Usage
 
-<ol>
-    <li>
-        <div>
-            Run <code>onfire</code> to initialize the CLI
-        </div>
-        <div style="background: #2c2c2c; padding: 12px; border-radius: 2px">
-            <div>
-                <span style="color: green"><b>></b></span> 
-            </div>
-            <div>
-                <span style="color: green"> <b>appdistribution:distribute</b> -> upload a release binary</span>
-            </div>
-            <div>
-                <b>appdistribution:testers:add</b> -> add testers to project (and possibly group)
-            </div>
-            <div>
-                <b>appdistribution:testers:remove</b> -> remove testers from a project (or group)
-            </div>
-            <div>
-                <b>appdistribution:group:create</b> -> create group in project
-            </div>
-        </div>
-    </li>
-    <br>
-    <li>
-        <div>
-            Type a command, for example <code>func</code> will list out the ff:
-        </div>
-        <div style="background: #2c2c2c; padding: 12px; border-radius: 2px">
-            <div>
-                <span style="color: green"><b>></b></span> func
-            </div>
-            <div>
-                <span style="color: green"><b>functions:config:clone</b> -> clone environment config from another project</span>
-            </div>
-            <div>
-                <b>functions:config:export</b> -> Export environment config as environment variables in dotenv format
-            </div>
-            <div>
-                <b>functions:config:get</b> -> fetch environment config stored at the given path
-            </div>
-            <div>
-                <b>functions:config:set</b> -> set environment config with key=value syntax
-            </div>
-        </div>
-    </li>
-    <br>
-    <li>
-        <div>
-            Move the cursor arrow up(↑) or arrow down(↓) to select a command
-        </div>
-        <div style="background: #2c2c2c; padding: 12px; border-radius: 2px">
-            <div>
-                <span style="color: green"><b>></b></span> func
-            </div>
-            <div>
-                <span style="color: green"><b>functions:shell</b> -> launch full Node shell with emulated functions</span>
-            </div>
-            <div>
-                <b>functions:list</b> -> list all deployed functions in your Firebase project
-            </div>
-            <div>
-                <b>functions:secrets:access</b> -> Access secret value given secret and its version. Defaults to accessing the latest version.
-            </div>
-            <div>
-                <b>functions:secrets:destroy</b> -> Destroy a secret. Defaults to destroying the latest version.
-            </div>
-        </div>
-    </li>
-    <br>
-    <li>
-        <div>
-            Press <code>Tab</code> to autocomplete the command:
-        </div>
-        <div style="background: #2c2c2c; padding: 12px; border-radius: 2px">
-            <div>
-                <span style="color: green"><b>></b></span> functions:shell
-            </div>
-            <div>
-                <span style="color: green"> <b>functions:shell</b> -> launch full Node shell with emulated functions</span>
-            </div>
-            <div>-</div>
-            <div>-</div>
-            <div>-</div>
-        </div>
-    </li>
-    <br>
-    <li>
-        <div>
-            Options will be listed for the command. Move the cursor arrow up(↑) or arrow down(↓) to select and add options:
-        </div>
-        <div style="background: #2c2c2c; padding: 12px; border-radius: 2px">
-            <div>
-                <span style="color: green"><b>></b></span> functions:shell
-            </div>
-            <div>
-                <span style="color: yellow"><b>Usage: </b></span> firebase functions:shell [options]
-            </div>
-            <div>
-                <span style="color: green"> <b>--port &lt;port&gt;</b> -> the port on which to emulate functions</span>
-            </div>
-            <div>
-                <b>--inspect-functions [port]</b> -> emulate Cloud Functions in debug mode with the node inspector on the given port (9229 if not specified)
-            </div>
-            <div>
-                <b>--project &lt;alias_or_project_id&gt;</b> -> the Firebase project to use for this command
-            </div>
-            <div>
-                <b>--debug</b>  -> print verbose debug output and keep a debug log file
-            </div>
-        </div>
-    </li>
-    <br>
-    <li>
-        <div>
-            Hit <code>Enter</code> to run the command:
-        </div>
-        <div style="background: #2c2c2c; padding: 12px; border-radius: 2px">
-            <div>
-                <span style="color: green"><b>></b></span> functions:shell --port 5000 --project demo-proj
-            </div>
-            <div>
-                <span style="color: yellow"><b>Usage: </b></span> firebase functions:shell [options]
-            </div>
-            <div>
-                -
-            </div>
-            <div>
-                -
-            </div>
-            <div>
-                -
-            </div>
-            <div>
-                -
-            </div>
-        </div>
-    </li>
-    <br>
-    <li>
-        <div>
-            When command finishes:
-        </div>
-        <ul>
-            <li>
-                <div>
-                    Successful exit(exit code is 0), resets to blank input state:
-                </div>
-                <div style="background: #2c2c2c; padding: 12px; border-radius: 2px">
-                    <div>
-                        <span style="color: green"><b>></b></span> 
-                    </div>
-                    <div>
-                        <span style="color: green"> <b>appdistribution:distribute</b> -> upload a release binary</span>
-                    </div>
-                    <div>
-                        <b>appdistribution:testers:add</b> -> add testers to project (and possibly group)
-                    </div>
-                    <div>
-                        <b>appdistribution:testers:remove</b> -> remove testers from a project (or group)
-                    </div>
-                    <div>
-                        <b>appdistribution:group:create</b> -> create group in project
-                    </div>
-                </div>
-            </li>
-            <br>
-            <li>
-                <div>
-                    Erroneous exit(exit code is not 0), reset to last input state:
-                </div>
-                <div style="background: #2c2c2c; padding: 12px; border-radius: 2px">
-                    <div>
-                        <span style="color: green"><b>></b></span> functions:shell --port 5000 --project demo-proj
-                    </div>
-                    <div>
-                        <span style="color: yellow"><b>Usage: </b></span> firebase functions:shell [options]
-                    </div>
-                    <div>
-                        -
-                    </div>
-                    <div>
-                        -
-                    </div>
-                    <div>
-                        -
-                    </div>
-                    <div>
-                        -
-                    </div>
-                </div>
-            </li>
-        </ul>
-    </li>
-    <br>
-</ol>
+
+1. Run `onfire` to initialize the CLI
+![step-1](https://github.com/amalej/onfire-cli/assets/78371908/a56607f0-4558-4e8c-8652-a46b561943e9)
+
+2. Type a command, for example `func` will list out the ff:
+![step-2](https://github.com/amalej/onfire-cli/assets/78371908/54dacce1-1be2-4292-8d6a-761624cb08a8)
+
+3. Move the cursor arrow up(↑) or arrow down(↓) to select a command
+![step-3](https://github.com/amalej/onfire-cli/assets/78371908/131480be-cdfa-4893-86b1-6411e8de271c)
+
+4. Press `Tab` to autocomplete the command:
+![step-4](https://github.com/amalej/onfire-cli/assets/78371908/159e42a7-a82f-4076-be94-b7eca1321443)
+
+5. Options will be listed for the command. Move the cursor arrow up(↑) or arrow down(↓) to select and add options:
+![step-5](https://github.com/amalej/onfire-cli/assets/78371908/15a1c424-0128-49f8-abd3-6919fae3390f)
+
+6. Hit `Enter` to run the command:
+![step-6](https://github.com/amalej/onfire-cli/assets/78371908/0754e3a2-e5e7-4cad-9b25-b809fbd3b286)
+
+7. When command finishes:
+   - Successful exit(exit code is 0), resets to blank input state:
+![step-7-ok](https://github.com/amalej/onfire-cli/assets/78371908/9ed78810-6a9d-4c01-babb-dc5c43aea6f7)
+
+   - Erroneous exit(exit code is not 0), reset to last input state:
+![step-7-err](https://github.com/amalej/onfire-cli/assets/78371908/63ed17ad-f374-4260-848f-abf98ae9806b)
