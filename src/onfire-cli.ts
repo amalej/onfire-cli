@@ -196,8 +196,9 @@ export class OnFireCLI extends CommandLineInterface {
 
   private renderCommandArgs() {
     this.clearTerminalDownward();
-    console.log("");
-    console.log("PROVIDE ARGS");
+    // TODO: Handle args input
+    // console.log("");
+    // console.log("PROVIDE ARGS");
     this.moveCursorToSavedCurrentPos();
   }
 
