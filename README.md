@@ -10,7 +10,8 @@ npm install -g onfire-cli
 
 ## Demo
 
-https://github.com/amalej/onfire-cli/assets/78371908/275da358-9938-468f-acc1-e5671e90bb48
+https://github.com/amalej/onfire-cli/assets/78371908/48da57b6-7826-49e3-92a5-4380eee19474
+
 
 ## Usage
 
