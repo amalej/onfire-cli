@@ -11,7 +11,8 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "test": "jest --coverage --verbose"
+    "test": "jest --coverage --verbose",
+    "test:onfire-cli": "jest -- onfire-cli.test.ts"
   },
   "bin": {
     "onfire": "./dist/index.js"
