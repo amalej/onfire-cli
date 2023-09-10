@@ -37,6 +37,39 @@ interface FirebaseCommandOptions {
 
 export class FirebaseCommands {
   client = null;
+  protected defaultOptions = {
+    "--project": {
+      option: "--project",
+      flags: "--project <alias_or_project_id>",
+      hint: "<alias_or_project_id>",
+      required: false,
+      optional: true,
+      long: "--project",
+      description: "the Firebase project to use for this command",
+      defaultValue: null,
+    },
+    "--debug": {
+      option: "--debug",
+      flags: "--debug",
+      hint: null,
+      required: false,
+      optional: true,
+      long: "--debug",
+      description: "print verbose debug output and keep a debug log file",
+      defaultValue: null,
+    },
+    "--non-interactive": {
+      option: "--non-interactive",
+      flags: "--non-interactive",
+      hint: null,
+      required: false,
+      optional: true,
+      long: "--non-interactive",
+      description: "error out of the command instead of waiting for prompts",
+      defaultValue: null,
+    },
+  };
+
   protected async loadFirebaseModule() {
     return new Promise((resolve, reject) => {
       const rejectTimout = setTimeout(() => {
@@ -120,38 +153,7 @@ export class FirebaseCommands {
               return optMap;
             },
             {}),
-            "--project": {
-              option: "--project",
-              flags: "--project <alias_or_project_id>",
-              hint: "<alias_or_project_id>",
-              required: false,
-              optional: true,
-              long: "--project",
-              description: "the Firebase project to use for this command",
-              defaultValue: null,
-            },
-            "--debug": {
-              option: "--debug",
-              flags: "--debug",
-              hint: null,
-              required: false,
-              optional: true,
-              long: "--debug",
-              description:
-                "print verbose debug output and keep a debug log file",
-              defaultValue: null,
-            },
-            "--non-interactive": {
-              option: "--non-interactive",
-              flags: "--non-interactive",
-              hint: null,
-              required: false,
-              optional: true,
-              long: "--non-interactive",
-              description:
-                "error out of the command instead of waiting for prompts",
-              defaultValue: null,
-            },
+            ...this.defaultOptions,
           },
           args: com._args.reduce(function (
             argMap: any,
