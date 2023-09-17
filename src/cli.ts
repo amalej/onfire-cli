@@ -76,6 +76,12 @@ export class CommandLineInterface {
     process.stdout.cursorTo(this.currentCursorPos.x, this.currentCursorPos.y);
   }
 
+  /**
+   * Get the parameters passed into a command
+   * @param command The entire command as a string
+   * @param options Commands flags that do not expect an argument
+   * @returns
+   */
   protected getCommandParams(
     command: string,
     options: Array<string> = []
