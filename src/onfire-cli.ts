@@ -331,27 +331,32 @@ export class OnFireCLI extends CommandLineInterface {
   private updateSavedInput() {
     const _options = this.getCurrentCommandNullableOptions();
     const { base, args, input } = this.getCommandParams(this.input, _options);
+    const cmdInput = this.input.trim();
 
     // Handle past commands
     if (this.savedInput.pastCommands === undefined) {
-      this.savedInput.pastCommands = [this.input];
+      this.savedInput.pastCommands = [cmdInput];
     } else {
-      if (this.savedInput.pastCommands.includes(this.input)) {
+      if (this.savedInput.pastCommands.includes(cmdInput)) {
         this.savedInput.pastCommands.sort((x: string, y: string) => {
-          return x == this.input ? -1 : y == this.input ? 1 : 0;
+          return x == cmdInput ? -1 : y == cmdInput ? 1 : 0;
         });
       } else {
-        this.savedInput.pastCommands.unshift(this.input);
+        this.savedInput.pastCommands.unshift(cmdInput);
       }
     }
 
     // Handle args
     const argFlags = Object.keys(args);
+    // console.log(argFlags);
     for (let i = 0; i < argFlags.length; i++) {
       const argFlag = argFlags[i];
+      // console.log(args[argFlag]);
       if (this.savedInput[argFlag] === undefined) {
+        // console.log("CREATE");
         this.savedInput[argFlag] = [args[argFlag]];
       } else {
+        // console.log("PUSH");
         if (!this.savedInput[argFlag].includes(args[argFlag])) {
           this.savedInput[argFlag].push(args[argFlag]);
         }
@@ -359,9 +364,13 @@ export class OnFireCLI extends CommandLineInterface {
       // const _savedArgFlag = this.savedInput[argFlag] || [];
       // this.savedInput[argFlag] = {};
     }
+
+    // console.log(this.savedInput);
   }
 
-  private async runCommand() {
+  private async runCommand({
+    debugging = false,
+  }: { debugging?: boolean } = {}) {
     const { base } = this.getCommandParams(this.input);
     if (base === "exit" || base === "stopdropandroll") {
       process.exit();
@@ -369,41 +378,13 @@ export class OnFireCLI extends CommandLineInterface {
     this.clearTerminalDownward();
     console.log(`\x1b[K`);
 
-    process.stdin.pause();
-
-    const spawnCommands = this.input.trim().split(" ");
-    this.firebaseSpawn = FirebaseCommands.runCommand(
-      "firebase",
-      [...spawnCommands],
-      {
-        stdio: "inherit",
-      }
-    );
-
-    this.firebaseSpawn.on("spawn", () => {
-      this.cancelPendingRenders = true;
-      process.stdout.cursorTo(0);
-      process.stdin.setRawMode(false);
-    });
-
-    this.firebaseSpawn.on("exit", async (code) => {
-      if (code === 0) {
-        this.updateSavedInput();
-      }
+    if (debugging) {
+      this.updateSavedInput();
       this.cancelPendingRenders = false;
       process.stdout.cursorTo(0);
-      const exitMessage =
-        code === 0
-          ? `${this.textGreen(
-              "OnFire:"
-            )} Command finished with exit code ${this.textGreen(
-              code?.toString()
-            )}\n`
-          : `${this.textRed(
-              "OnFire:"
-            )} Command finished with exit code ${this.textRed(
-              code?.toString()
-            )}\n`;
+      const exitMessage = `${this.textGreen(
+        "OnFire:"
+      )} Command finished with exit code ${this.textGreen("0")}\n`;
       console.log(exitMessage);
       process.stdin.setRawMode(true);
       process.stdin.resume();
@@ -420,17 +401,73 @@ export class OnFireCLI extends CommandLineInterface {
       process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
       this.shiftCursorPosition(this.prefix.length);
 
-      if (code === 0) {
-        this.input = "";
-        this.moveCursorToInputStart();
-        this.renderIO();
-      } else {
-        process.stdout.write(this.input);
-        this.shiftCursorPosition(this.input.length);
-        this.renderIO();
-      }
-      this.firebaseSpawn = null;
-    });
+      this.input = "";
+      this.moveCursorToInputStart();
+      this.renderIO();
+    } else {
+      process.stdin.pause();
+
+      const spawnCommands = this.input.trim().split(" ");
+      this.firebaseSpawn = FirebaseCommands.runCommand(
+        "firebase",
+        [...spawnCommands],
+        {
+          stdio: "inherit",
+        }
+      );
+
+      this.firebaseSpawn.on("spawn", () => {
+        this.cancelPendingRenders = true;
+        process.stdout.cursorTo(0);
+        process.stdin.setRawMode(false);
+      });
+
+      this.firebaseSpawn.on("exit", async (code) => {
+        if (code === 0) {
+          this.updateSavedInput();
+        }
+        this.cancelPendingRenders = false;
+        process.stdout.cursorTo(0);
+        const exitMessage =
+          code === 0
+            ? `${this.textGreen(
+                "OnFire:"
+              )} Command finished with exit code ${this.textGreen(
+                code?.toString()
+              )}\n`
+            : `${this.textRed(
+                "OnFire:"
+              )} Command finished with exit code ${this.textRed(
+                code?.toString()
+              )}\n`;
+        console.log(exitMessage);
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+
+        this.createTerminalBuffer();
+        this.originalCursorPos = await this.getCursorPosition();
+        // Shift the cursor position
+        this.originalCursorPos = {
+          x: this.originalCursorPos.x - 1,
+          y: this.originalCursorPos.y - 1,
+        };
+        this.currentCursorPos = { ...this.originalCursorPos };
+        process.stdin.setRawMode(true);
+        process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
+        this.shiftCursorPosition(this.prefix.length);
+
+        if (code === 0) {
+          this.input = "";
+          this.moveCursorToInputStart();
+          this.renderIO();
+        } else {
+          process.stdout.write(this.input);
+          this.shiftCursorPosition(this.input.length);
+          this.renderIO();
+        }
+        this.firebaseSpawn = null;
+      });
+    }
   }
 
   private async handleExit() {
@@ -481,9 +518,8 @@ export class OnFireCLI extends CommandLineInterface {
       // console.log(args);
       // console.log(options);
       // console.log(input);
-      // this.firebaseSpawnExit(0);
       // -------------- DEBUGGING --------------
-      this.runCommand();
+      this.runCommand({ debugging: true });
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
         this.listItemIndex -= 1;
