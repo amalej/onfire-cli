@@ -90,13 +90,16 @@ export class CommandLineInterface {
     args: {
       [key: string]: string;
     };
+    flags: Array<string>;
     options: Array<string>;
     input: Array<string>;
   } {
-    const args = command.split(" ");
+    const args = command.match(/(".*?"|[^"\s]+)+(?=\s*|\s*$)/g) || [""];
+    // const args = command.split(" ");
     let _base = args[0];
     let _arguments = {};
     let _options = [];
+    let _flags = [];
     let _input = [];
     if (args === null) return null;
     for (let i = 1; i < args.length; i++) {
@@ -109,6 +112,7 @@ export class CommandLineInterface {
         } else {
           _arguments[splitArg[0]] = splitArg[1];
         }
+        _flags.push(splitArg[0]);
       } else if (args[i].startsWith("-")) {
         if (
           args.length - 1 === i ||
@@ -131,6 +135,7 @@ export class CommandLineInterface {
           }
         }
 
+        _flags.push(args[i]);
         if (!options.includes(args[i]) && !args[i + 1]?.startsWith("-")) {
           i++; // TODO: This might introduce bugs, remove if it does.
         }
@@ -145,6 +150,7 @@ export class CommandLineInterface {
       base: _base,
       args: _arguments,
       options: _options,
+      flags: _flags,
       input: _input,
     };
   }
@@ -171,5 +177,9 @@ export class CommandLineInterface {
 
   protected textBold(str: string) {
     return `\x1b[1m${str}\x1b[0m`;
+  }
+
+  protected capitalizeFirstLetter(str: string) {
+    return str[0].toUpperCase() + str.slice(1);
   }
 }
