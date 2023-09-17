@@ -6,6 +6,10 @@ class MockOnFireCLI extends OnFireCLI {
     return this.getCurrentCommandNullableOptions();
   }
 
+  _getCurrentCommandNonNullableOptions(): string[] {
+    return this.getCurrentCommandNonNullableOptions();
+  }
+
   _loadFirebaseCommands(): Promise<void> {
     return this.loadFirebaseCommands();
   }
@@ -16,6 +20,22 @@ class MockOnFireCLI extends OnFireCLI {
 
   _loadCommandOptions(str: string) {
     return this.firebaseCommands[str].options ?? [];
+  }
+
+  _setCursorPosition(x: number, y: number = 0) {
+    // y position does not matter
+    this.currentCursorPos = {
+      x,
+      y,
+    };
+  }
+
+  _getTypedWord(): { word: string; start: number; end: number } {
+    return this.getTypedWord();
+  }
+
+  _getTypeFlag(): { flag: string; start: number; end: number } {
+    return this.getTypedFlag();
   }
 }
 
@@ -45,6 +65,27 @@ describe("Run simple commands", () => {
     expect(_opts).toEqual([]);
   });
 
+  it("Should return non-nullable options for 'appdistribution:distribute'", async () => {
+    cli._setInput("appdistribution:distribute");
+    const _opts = cli._getCurrentCommandNonNullableOptions();
+    expect(_opts).toEqual([
+      "--app",
+      "--release-notes",
+      "--release-notes-file",
+      "--testers",
+      "--testers-file",
+      "--groups",
+      "--groups-file",
+      "--project",
+    ]);
+  });
+
+  it("Should return blank options for 'invalidcommand'", async () => {
+    cli._setInput("invalidcommand");
+    const _opts = cli._getCurrentCommandNonNullableOptions();
+    expect(_opts).toEqual([]);
+  });
+
   it(`Should have ${appdistribution.distributeLen} options available for command 'appdistribution:distribute'`, async () => {
     cli._setInput("appdistribution:distribute");
     const _options = Object.keys(
@@ -70,5 +111,139 @@ describe("Run simple commands", () => {
     );
 
     expect(_options.length).toEqual(appdistribution.testers.removeLen);
+  });
+});
+
+describe("Get typed word", () => {
+  const cli = new MockOnFireCLI();
+  beforeAll(async () => {
+    await cli._loadFirebaseCommands();
+  });
+
+  it(`Should show that the word currently being typed is '' for 'appdistribution:distribute --app   '`, async () => {
+    cli._setInput("appdistribution:distribute --app");
+    cli._setCursorPosition(cli.prefix.length + 35);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("");
+  });
+
+  it(`Should show that the word currently being typed is 'appdistribution:distribute' for 'appdistribution:distribute --app'`, async () => {
+    cli._setInput("appdistribution:distribute --app");
+    cli._setCursorPosition(cli.prefix.length + 2);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("appdistribution:distribute");
+  });
+
+  it(`Should show that the word currently being typed is '--app' for 'appdistribution:distribute --app'`, async () => {
+    cli._setInput("appdistribution:distribute --app");
+    cli._setCursorPosition(cli.prefix.length + 28);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("--app");
+  });
+
+  it(`Should show that the word currently being typed is '--functions:shell' for 'functions:shell --port 5000 --project=demo-project'`, async () => {
+    cli._setInput("functions:shell --port 5000 --project=demo-project");
+    cli._setCursorPosition(cli.prefix.length + 15);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("functions:shell");
+  });
+
+  it(`Should show that the word currently being typed is '--port' for 'functions:shell --port 5000 --project=demo-project'`, async () => {
+    cli._setInput("functions:shell --port 5000 --project=demo-project");
+    cli._setCursorPosition(cli.prefix.length + 16);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("--port");
+  });
+
+  it(`Should show that the word currently being typed is '--port' for 'functions:shell --port 5000 --project=demo-project'`, async () => {
+    cli._setInput("functions:shell --port 5000 --project=demo-project");
+    cli._setCursorPosition(cli.prefix.length + 17);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("--port");
+  });
+
+  it(`Should show that the word currently being typed is '5000' for 'functions:shell --port 5000 --project=demo-project'`, async () => {
+    cli._setInput("functions:shell --port 5000 --project=demo-project");
+    cli._setCursorPosition(cli.prefix.length + 27);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("5000");
+  });
+
+  it(`Should show that the word currently being typed is '--project' for 'functions:shell --port 5000 --project=demo-project'`, async () => {
+    cli._setInput("functions:shell --port 5000 --project=demo-project");
+    cli._setCursorPosition(cli.prefix.length + 37);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("--project");
+  });
+
+  it(`Should show that the word currently being typed is 'demo-project' for 'functions:shell --port 5000 --project=demo-project'`, async () => {
+    cli._setInput("functions:shell --port 5000 --project=demo-project");
+    cli._setCursorPosition(cli.prefix.length + 38);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("demo-project");
+  });
+});
+
+describe("Get typed flag", () => {
+  const cli = new MockOnFireCLI();
+  beforeAll(async () => {
+    await cli._loadFirebaseCommands();
+  });
+
+  it(`Should show that the flag currently being inputted is '-app' for 'appdistribution:distribute --app '`, async () => {
+    cli._setInput("appdistribution:distribute --app ");
+    cli._setCursorPosition(cli.prefix.length + 33);
+
+    const typedWord = cli._getTypeFlag();
+    expect(typedWord.flag).toEqual("--app");
+  });
+
+  it(`Should show that the flag currently being inputted is '-app' for 'appdistribution:distribute --app='`, async () => {
+    cli._setInput("appdistribution:distribute --app=");
+    cli._setCursorPosition(cli.prefix.length + 33);
+
+    const typedWord = cli._getTypeFlag();
+    expect(typedWord.flag).toEqual("--app");
+  });
+
+  it(`Should show that the flag currently being inputted is '-app' for 'appdistribution:distribute --app=1:1234567890:ios:321abc456def7890'`, async () => {
+    cli._setInput("appdistribution:distribute --app=");
+    cli._setCursorPosition(cli.prefix.length + 37);
+
+    const typedWord = cli._getTypeFlag();
+    expect(typedWord.flag).toEqual("--app");
+  });
+
+  it(`Should show that the flag currently being inputted is '-port' for 'functions:shell --port 5000 --project=demo-project'`, async () => {
+    cli._setInput("functions:shell --port 5000 --project=demo-project");
+    cli._setCursorPosition(cli.prefix.length + 23);
+
+    const typedWord = cli._getTypeFlag();
+    expect(typedWord.flag).toEqual("--port");
+  });
+
+  it(`Should show that the flag currently being inputted is '-port' for 'functions:shell --port 5000 --project=demo-project'`, async () => {
+    cli._setInput("functions:shell --port 5000 --project=demo-project");
+    cli._setCursorPosition(cli.prefix.length + 48);
+
+    const typedWord = cli._getTypeFlag();
+    expect(typedWord.flag).toEqual("--project");
+  });
+
+  it(`Should show that the flag currently being inputted is '-port' for 'functions:shell --port --project=demo-project'`, async () => {
+    cli._setInput("functions:shell --port  --project");
+    cli._setCursorPosition(cli.prefix.length + 23);
+
+    const typedWord = cli._getTypeFlag();
+    expect(typedWord.flag).toEqual("--port");
   });
 });
