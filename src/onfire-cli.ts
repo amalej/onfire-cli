@@ -2,6 +2,7 @@ import readline from "readline";
 import { FirebaseCommands } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
 import { ChildProcess } from "child_process";
+import { CliCache } from "./cli-cache";
 
 interface CommandConfig {
   description: string;
@@ -26,30 +27,48 @@ interface CommandArgsConfig {
   variadic: boolean;
 }
 
+interface SavedInput {
+  pastCommands?: string[] | undefined;
+  [key: string]: any;
+}
+
 export class OnFireCLI extends CommandLineInterface {
   input = "";
+
   private cancelPendingRenders = false;
   private isHelpProcessRunning = false;
   private firebaseSpawn: ChildProcess | null = null;
   private listItemIndex: number = 0;
   private itemList: Array<string> = [];
+  private isProcessingExit = false;
   protected firebaseCommands: {
     [key: string]: CommandConfig;
   };
   private firebaseCli: FirebaseCommands;
+  private savedInput: SavedInput;
 
   constructor({
     prefix = "",
     maxItemShown = 4,
-  }: { prefix?: string; maxItemShown?: number } = {}) {
+    savedInput = {},
+  }: {
+    prefix?: string;
+    maxItemShown?: number;
+    savedInput?: SavedInput;
+  } = {}) {
     super({
       prefix,
       maxItemShown,
     });
     this.firebaseCli = new FirebaseCommands();
+    this.savedInput = savedInput;
   }
 
-  protected getCurrentCommandNullableOptions() {
+  /**
+   * Get a string array of flags that do not expect an argument
+   * @returns An array of string
+   */
+  protected getCurrentCommandNullableOptions(): string[] {
     const { base } = this.getCommandParams(this.input);
     if (
       this.firebaseCommands[base] === undefined ||
@@ -68,6 +87,30 @@ export class OnFireCLI extends CommandLineInterface {
       return [];
     }
     return Object.keys(this.firebaseCommands[base].args);
+  }
+
+  private renderPastCommands() {
+    const list = this.savedInput.pastCommands || [];
+    this.clearTerminalDownward();
+
+    console.log("");
+    this.itemList = list;
+
+    const slicedList = list.slice(this.listItemIndex);
+
+    for (let i = 0; i < this.maxItemShown; i++) {
+      const command = slicedList[i];
+      if (command !== undefined) {
+        const msg =
+          i === 0
+            ? `${this.textGreen(this.textBold(command))}`
+            : `${this.textBold(command)}`;
+        console.log(`${msg}\x1b[K`);
+      } else {
+        console.log(`-\x1b[K`);
+      }
+    }
+    this.moveCursorToSavedCurrentPos();
   }
 
   private renderCommandList() {
@@ -100,30 +143,6 @@ export class OnFireCLI extends CommandLineInterface {
     }
 
     this.moveCursorToSavedCurrentPos();
-  }
-
-  private getTypedWord(): {
-    word: string;
-    start: number;
-    end: number;
-  } {
-    const posX = this.currentCursorPos.x - this.prefix.length;
-    const words = this.input.split(" ");
-    for (let i = 0; i < words.length; i++) {
-      const currentLen = words.slice(0, i + 1).join("").length + i;
-      if (posX <= currentLen) {
-        return {
-          word: words[i],
-          start: currentLen - words[i].length,
-          end: currentLen,
-        };
-      }
-    }
-    return {
-      word: "",
-      start: posX,
-      end: posX,
-    };
   }
 
   private renderCommandOptions() {
@@ -194,6 +213,30 @@ export class OnFireCLI extends CommandLineInterface {
     this.moveCursorToSavedCurrentPos();
   }
 
+  private getTypedWord(): {
+    word: string;
+    start: number;
+    end: number;
+  } {
+    const posX = this.currentCursorPos.x - this.prefix.length;
+    const words = this.input.split(" ");
+    for (let i = 0; i < words.length; i++) {
+      const currentLen = words.slice(0, i + 1).join("").length + i;
+      if (posX <= currentLen) {
+        return {
+          word: words[i],
+          start: currentLen - words[i].length,
+          end: currentLen,
+        };
+      }
+    }
+    return {
+      word: "",
+      start: posX,
+      end: posX,
+    };
+  }
+
   private renderCommandArgs() {
     this.clearTerminalDownward();
     // TODO: Handle args input
@@ -204,7 +247,14 @@ export class OnFireCLI extends CommandLineInterface {
 
   private handleTabCompletion() {
     const { base, args, options } = this.getCommandParams(this.input);
-    if (base.length + this.prefix.length >= this.currentCursorPos.x) {
+
+    if (base === "") {
+      const list = this.savedInput.pastCommands || [];
+      const slicedList = list.slice(this.listItemIndex);
+      this.input = slicedList[0] || "";
+      process.stdout.write(this.input);
+      this.shiftCursorPosition(this.input.length);
+    } else if (base.length + this.prefix.length >= this.currentCursorPos.x) {
       const filteredList = Object.keys(this.firebaseCommands).filter(
         (command) => command.startsWith(base)
       );
@@ -260,7 +310,9 @@ export class OnFireCLI extends CommandLineInterface {
     const _options = this.getCurrentCommandNullableOptions();
     const typedWord = this.getTypedWord();
     const { base, input } = this.getCommandParams(this.input, _options);
-    if (base.length + this.prefix.length >= this.currentCursorPos.x) {
+    if (base === "") {
+      this.renderPastCommands();
+    } else if (base.length + this.prefix.length >= this.currentCursorPos.x) {
       this.renderCommandList();
     } else if (input.length > 0 && input.includes(typedWord.word)) {
       // Handle required inputs for commands
@@ -274,6 +326,39 @@ export class OnFireCLI extends CommandLineInterface {
     this.clearTerminalDownward();
     console.log("");
     console.log(`${this.textGreen("OnFire:")} exit`);
+  }
+
+  private updateSavedInput() {
+    const _options = this.getCurrentCommandNullableOptions();
+    const { base, args, input } = this.getCommandParams(this.input, _options);
+
+    // Handle past commands
+    if (this.savedInput.pastCommands === undefined) {
+      this.savedInput.pastCommands = [this.input];
+    } else {
+      if (this.savedInput.pastCommands.includes(this.input)) {
+        this.savedInput.pastCommands.sort((x: string, y: string) => {
+          return x == this.input ? -1 : y == this.input ? 1 : 0;
+        });
+      } else {
+        this.savedInput.pastCommands.unshift(this.input);
+      }
+    }
+
+    // Handle args
+    const argFlags = Object.keys(args);
+    for (let i = 0; i < argFlags.length; i++) {
+      const argFlag = argFlags[i];
+      if (this.savedInput[argFlag] === undefined) {
+        this.savedInput[argFlag] = [args[argFlag]];
+      } else {
+        if (!this.savedInput[argFlag].includes(args[argFlag])) {
+          this.savedInput[argFlag].push(args[argFlag]);
+        }
+      }
+      // const _savedArgFlag = this.savedInput[argFlag] || [];
+      // this.savedInput[argFlag] = {};
+    }
   }
 
   private async runCommand() {
@@ -302,6 +387,9 @@ export class OnFireCLI extends CommandLineInterface {
     });
 
     this.firebaseSpawn.on("exit", async (code) => {
+      if (code === 0) {
+        this.updateSavedInput();
+      }
       this.cancelPendingRenders = false;
       process.stdout.cursorTo(0);
       const exitMessage =
@@ -335,18 +423,24 @@ export class OnFireCLI extends CommandLineInterface {
       if (code === 0) {
         this.input = "";
         this.moveCursorToInputStart();
-        this.renderCommandList();
+        this.renderIO();
       } else {
         process.stdout.write(this.input);
         this.shiftCursorPosition(this.input.length);
-        if (base.length + this.prefix.length >= this.currentCursorPos.x) {
-          this.renderCommandList();
-        } else {
-          this.renderCommandOptions();
-        }
+        this.renderIO();
       }
       this.firebaseSpawn = null;
     });
+  }
+
+  private async handleExit() {
+    if (!this.isProcessingExit) {
+      this.isProcessingExit = true;
+      await CliCache.writeToFile(this.savedInput);
+      process.exit();
+    } else {
+      console.log("\n Processing exit");
+    }
   }
 
   private keyPressListener(str: string, key: any) {
@@ -358,7 +452,7 @@ export class OnFireCLI extends CommandLineInterface {
 
     if (key.ctrl == true && key.name == "c") {
       if (this.firebaseSpawn === null) {
-        process.exit();
+        this.handleExit();
       }
     } else if (key.name === "backspace") {
       if (xPos > 0) {
@@ -379,13 +473,16 @@ export class OnFireCLI extends CommandLineInterface {
       this.listItemIndex = 0;
       this.createTerminalBuffer();
       this.clearTerminalDownward();
-      // console.log(" ------------------------------ ");
+      // -------------- DEBUGGING --------------
+      // console.log("\n -------------- DEBUGGING -------------- ");
       // console.log(_options);
       // console.log(this.input);
       // console.log(base);
       // console.log(args);
       // console.log(options);
       // console.log(input);
+      // this.firebaseSpawnExit(0);
+      // -------------- DEBUGGING --------------
       this.runCommand();
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
@@ -474,7 +571,7 @@ export class OnFireCLI extends CommandLineInterface {
     process.stdin.setRawMode(true);
     process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
     this.shiftCursorPosition(prefixLen);
-    this.renderCommandList();
+    this.renderIO();
     process.stdin.setRawMode(true);
     process.on("SIGINT", function () {
       console.log(`\x1b[32mOnFire:\x1b[0m Received SIGINT signal`);
