@@ -1,19 +1,20 @@
 import path from "path";
 import { mkdir, readFile, stat, writeFile } from "fs/promises";
 
-const APP_NAME = "onfire-cli";
+export const APP_NAME = "onfire-cli";
+export const MAX_CACHE_COUNT = 10;
 
 export class CliCache {
   static async getAppDir(): Promise<string> {
-    var plat = process.platform;
+    let plat = process.platform;
 
-    var homeDir = process.env[plat == "win32" ? "USERPROFILE" : "HOME"];
-    var appDir = null;
+    let homeDir = process.env[plat == "win32" ? "USERPROFILE" : "HOME"];
+    let appDir = null;
 
     if (plat == "win32") {
-      appDir = path.join(homeDir, "AppData", APP_NAME);
+      appDir = path.join(homeDir, "AppData", `${APP_NAME}`);
     } else {
-      appDir = path.join(homeDir, "." + APP_NAME);
+      appDir = path.join(homeDir, "." + `${APP_NAME}`);
     }
 
     try {
@@ -31,7 +32,8 @@ export class CliCache {
 
   static async readFromFile(): Promise<Object> {
     const dirPath = await CliCache.getAppDir();
-    const filePath = path.join(dirPath, "cache.json");
+    const additionalPath = process.env.TEST_CACHE_PATH || "";
+    const filePath = path.join(dirPath, `cache${additionalPath}.json`);
     let _obj = {};
     try {
       await stat(filePath);
@@ -53,7 +55,8 @@ export class CliCache {
 
   static async writeToFile(obj: Object): Promise<void> {
     const dirPath = await CliCache.getAppDir();
-    const filePath = path.join(dirPath, "cache.json");
+    const additionalPath = process.env.TEST_CACHE_PATH || "";
+    const filePath = path.join(dirPath, `cache${additionalPath}.json`);
 
     try {
       await writeFile(filePath, JSON.stringify(obj, null, 4));
