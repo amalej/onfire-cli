@@ -303,31 +303,12 @@ export class OnFireCLI extends CommandLineInterface {
       // Handle required inputs for commands
       this.renderCommandArgs();
     } else if (
-      // 1
       _nonNullOptions.includes(typedFlag.flag) &&
       !typedWord.word.replace(/--.*=/g, "").startsWith("-") &&
       (args[typedFlag.flag] === undefined ||
         args[typedFlag.flag] === "" ||
         args[typedFlag.flag] === typedWord.word.replace(/--.*=/g, ""))
     ) {
-      this.clearTerminalDownward();
-      // console.log("");
-      // console.log(
-      //   "_nonNullOptions.includes(typedFlag.flag):",
-      //   _nonNullOptions.includes(typedFlag.flag)
-      // );
-      // console.log(
-      //   "args[typedFlag.flag]:",
-      //   args[typedFlag.flag] || "NOT DEFINED"
-      // );
-      // console.log(
-      //   "_nonNullOptions.includes(typedFlag.start):",
-      //   typedFlag.start
-      // );
-      // console.log("_nonNullOptions.includes(typedFlag.end):", typedFlag.end);
-      // console.log("typedWord:", typedWord);
-      // const date = new Date();
-      // console.log(date.toUTCString());
       this.renderOptionValues();
     } else {
       this.renderCommandOptions();
@@ -335,28 +316,8 @@ export class OnFireCLI extends CommandLineInterface {
   }
 
   private handleTabCompletion() {
-    const { base, args, options } = this.getCommandParams(this.input);
+    const { args, options } = this.getCommandParams(this.input);
 
-    // if (base === "") {
-    //   const list = this.savedInput.pastCommands || [];
-    //   const slicedList = list.slice(this.listItemIndex);
-    //   this.input = slicedList[0] || "";
-    //   process.stdout.write(this.input);
-    //   this.shiftCursorPosition(this.input.length);
-    // } else if (base.length + this.prefix.length >= this.currentCursorPos.x) {
-    //   const filteredList = Object.keys(this.firebaseCommands).filter(
-    //     (command) => command.startsWith(base)
-    //   );
-    //   const slicedList = filteredList.slice(this.listItemIndex);
-
-    //   if (slicedList[0] !== undefined) {
-    //     this.moveCursorToInputStart();
-    //     this.input = `${slicedList[0]}${this.input.replace(base, "")}`;
-    //     process.stdout.write(this.input);
-    //     this.shiftCursorPosition(slicedList[0].length);
-    //     this.listItemIndex = 0;
-    //   }
-    // } else {
     const typedWord = this.getTypedWord();
     const list = this.itemList;
     const argList = Object.keys(args);
@@ -381,7 +342,6 @@ export class OnFireCLI extends CommandLineInterface {
       this.shiftCursorPosition(slicedList[0].length);
       this.listItemIndex = 0;
     }
-    // }
   }
 
   protected getTypedWord(): {
@@ -390,7 +350,9 @@ export class OnFireCLI extends CommandLineInterface {
     end: number;
   } {
     const posX = this.currentCursorPos.x - this.prefix.length;
-    const words = this.input.replace(/=/g, " ").split(" ");
+    const words = this.input
+      .replace(/=/g, " ")
+      .match(/(".*?"|'.*?'|[^"\s]+)+(?=\s*|\s*$)/g) || [""];
     for (let i = 0; i < words.length; i++) {
       const currentLen = words.slice(0, i + 1).join("").length + i;
       if (posX <= currentLen) {
@@ -419,7 +381,9 @@ export class OnFireCLI extends CommandLineInterface {
     const { flags } = this.getCommandParams(trimmedInput, _options);
 
     const argFlags = flags;
-    const words = this.input.replace(/=/g, " ").split(" ");
+    const words = this.input
+      .replace(/=/g, " ")
+      .match(/(".*?"|'.*?'|[^"\s]+)+(?=\s*|\s*$)/g) || [""];
     for (let i = 0; i < words.length; i++) {
       const currentLen = words.slice(0, i + 1).join("").length + i;
       if (posX <= currentLen) {
@@ -475,9 +439,16 @@ export class OnFireCLI extends CommandLineInterface {
       if (this.savedInput[argFlag] === undefined) {
         this.savedInput[argFlag] = [args[argFlag]];
       } else {
-        if (!this.savedInput[argFlag].includes(args[argFlag])) {
-          this.savedInput[argFlag].push(args[argFlag]);
+        // if (!this.savedInput[argFlag].includes(args[argFlag])) {
+        if (args[argFlag].includes(",")) {
+          const _splitArg =
+            args[argFlag].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+          if (_splitArg.length !== 0) {
+            this.savedInput[argFlag].unshift(..._splitArg);
+          }
         }
+        this.savedInput[argFlag].unshift(args[argFlag]);
+        this.savedInput[argFlag] = [...new Set(this.savedInput[argFlag])];
       }
     }
   }
@@ -493,6 +464,20 @@ export class OnFireCLI extends CommandLineInterface {
     console.log(`\x1b[K`);
 
     if (debugging) {
+      const _options = this.getCurrentCommandNullableOptions();
+      const { base, args, options, input } = this.getCommandParams(
+        this.input,
+        _options
+      ); // Used for debugging
+      console.log("\n -------------- DEBUGGING FULL ARG INFO-------------- ");
+      console.log("command arg:", this.firebaseCommands[base].args);
+      console.log("command options:", this.firebaseCommands[base].options);
+      console.log("\n -------------- DEBUGGING -------------- ");
+      console.log("this.input:", this.input);
+      console.log("base:", base);
+      console.log("args:", args);
+      console.log("options:", options);
+      console.log("input:", input);
       this.updateSavedInput();
       this.cancelPendingRenders = false;
       process.stdout.cursorTo(0);
@@ -500,6 +485,7 @@ export class OnFireCLI extends CommandLineInterface {
         "OnFire:"
       )} Command finished with exit code ${this.textGreen("0")}\n`;
       console.log(exitMessage);
+      console.log(this.savedInput);
       process.stdin.setRawMode(true);
       process.stdin.resume();
 
@@ -614,25 +600,11 @@ export class OnFireCLI extends CommandLineInterface {
         this.currentCursorPos.x -= 1;
       }
     } else if (key.name === "return") {
-      const _options = this.getCurrentCommandNullableOptions();
-      const { base, args, options, input } = this.getCommandParams(
-        this.input,
-        _options
-      ); // Used for debugging
       this.moveCursorToInputStart();
       this.shiftCursorPosition(this.input.length);
       this.listItemIndex = 0;
       this.createTerminalBuffer();
       this.clearTerminalDownward();
-      // -------------- DEBUGGING --------------
-      // console.log("\n -------------- DEBUGGING -------------- ");
-      // console.log(_options);
-      // console.log(this.input);
-      // console.log(base);
-      // console.log(args);
-      // console.log(options);
-      // console.log(input);
-      // -------------- DEBUGGING --------------
       this.runCommand({ debugging: false });
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
