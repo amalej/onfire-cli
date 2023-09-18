@@ -121,4 +121,14 @@ describe("Deconstuct commands", () => {
 
     expect(flags).toEqual(["--debug", "--app", "--project"]);
   });
+
+  it(`Should have release notes equal to 'This is release notes' for 'appdistribution:distribute --release-notes "This is release notes, additional text"'`, async () => {
+    const command =
+      'appdistribution:distribute --release-notes "This is release notes, additional text"';
+    const { args } = cli._getCommandParams(command, ["--debug"]);
+
+    expect(args["--release-notes"]).toBe(
+      `"This is release notes, additional text"`
+    );
+  });
 });

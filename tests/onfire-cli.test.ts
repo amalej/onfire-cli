@@ -191,6 +191,36 @@ describe("Get typed word", () => {
     const typedWord = cli._getTypedWord();
     expect(typedWord.word).toEqual("demo-project");
   });
+
+  it(`Should show that the word currently being typed is 'This is release notes' for 'appdistribution:distribute --release-notes "This is release notes"'`, async () => {
+    cli._setInput(
+      'appdistribution:distribute --release-notes "This is release notes"'
+    );
+    cli._setCursorPosition(cli.prefix.length + 52);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual('"This is release notes"');
+  });
+
+  it(`Should show that the word currently being typed is 'This is release notes' for "appdistribution:distribute --release-notes 'This is release notes'"`, async () => {
+    cli._setInput(
+      "appdistribution:distribute --release-notes 'This is release notes'"
+    );
+    cli._setCursorPosition(cli.prefix.length + 52);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual("'This is release notes'");
+  });
+
+  it(`Should have release notes equal to "This is release notes, additional text" for 'appdistribution:distribute --release-notes "This is release notes, additional text"'`, async () => {
+    cli._setInput(
+      'appdistribution:distribute --release-notes "This is release notes, additional text"'
+    );
+    cli._setCursorPosition(cli.prefix.length + 52);
+
+    const typedWord = cli._getTypedWord();
+    expect(typedWord.word).toEqual('"This is release notes, additional text"');
+  });
 });
 
 describe("Get typed flag", () => {
