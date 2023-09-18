@@ -94,7 +94,7 @@ export class CommandLineInterface {
     options: Array<string>;
     input: Array<string>;
   } {
-    const args = command.match(/(".*?"|[^"\s]+)+(?=\s*|\s*$)/g) || [""];
+    const args = command.match(/(".*?"|'.*?'|[^"\s]+)+(?=\s*|\s*$)/g) || [""];
     // const args = command.split(" ");
     let _base = args[0];
     let _arguments = {};

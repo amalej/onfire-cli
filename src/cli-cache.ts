@@ -2,7 +2,7 @@ import path from "path";
 import { mkdir, readFile, stat, writeFile } from "fs/promises";
 
 export const APP_NAME = "onfire-cli";
-export const MAX_CACHE_COUNT = 10;
+export const MAX_CACHE_COUNT = 20;
 
 export class CliCache {
   static async getAppDir(): Promise<string> {
