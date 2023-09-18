@@ -11,3 +11,11 @@ npm install -g onfire-cli
 ## Demo
 
 https://github.com/amalej/onfire-cli/assets/78371908/48da57b6-7826-49e3-92a5-4380eee19474
+
+## Features
+
+- Tab completion for Firebase CLI commands
+- Option flag autocompletion
+- Option value autocompletion for values recently passed
+  - Values of flags are cached locally
+- Usage and option description message
