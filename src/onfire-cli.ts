@@ -2,7 +2,7 @@ import readline from "readline";
 import { FirebaseCommands } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
 import { ChildProcess } from "child_process";
-import { CliCache } from "./cli-cache";
+import { CliCache, MAX_CACHE_COUNT } from "./cli-cache";
 
 interface CommandConfig {
   description: string;
@@ -81,6 +81,23 @@ export class OnFireCLI extends CommandLineInterface {
     );
   }
 
+  /**
+   * Get a string array of flags that do not expect an argument
+   * @returns An array of string
+   */
+  protected getCurrentCommandNonNullableOptions(): string[] {
+    const { base } = this.getCommandParams(this.input);
+    if (
+      this.firebaseCommands[base] === undefined ||
+      this.firebaseCommands[base].options === null
+    ) {
+      return [];
+    }
+    return Object.keys(this.firebaseCommands[base].options).filter(
+      (opt) => this.firebaseCommands[base].options[opt].hint !== null
+    );
+  }
+
   private getCurrentCommandArgs() {
     const { base } = this.getCommandParams(this.input);
     if (this.firebaseCommands[base] === undefined) {
@@ -119,7 +136,7 @@ export class OnFireCLI extends CommandLineInterface {
     this.clearTerminalDownward();
 
     console.log("");
-    const filteredList = list.filter((command) =>
+    const filteredList = list.filter((command: string) =>
       command.startsWith(baseCommand)
     );
     this.itemList = filteredList;
@@ -213,13 +230,167 @@ export class OnFireCLI extends CommandLineInterface {
     this.moveCursorToSavedCurrentPos();
   }
 
-  private getTypedWord(): {
+  private renderCommandArgs() {
+    this.clearTerminalDownward();
+    // TODO: Handle args input
+    console.log("");
+    console.log("[Provide args]");
+    this.moveCursorToSavedCurrentPos();
+  }
+
+  private renderOptionValues() {
+    const { base } = this.getCommandParams(this.input);
+    this.clearTerminalDownward();
+
+    console.log("");
+    const typedFlag = this.getTypedFlag();
+    const msg = `${this.textBold(
+      this.textYellow("Description:")
+    )} ${this.capitalizeFirstLetter(
+      this.firebaseCommands[base].options[typedFlag.flag].description
+    )}`;
+    console.log(msg);
+    const typedWord = this.getTypedWord();
+    const list = this.savedInput[typedFlag.flag] || [];
+    const filteredList = list.filter((argVal: string) =>
+      argVal.startsWith(typedWord.word.replace(/--.*=/g, ""))
+    );
+    this.itemList = list;
+    const slicedList = filteredList.slice(this.listItemIndex);
+
+    for (let i = 0; i < this.maxItemShown; i++) {
+      const command = slicedList[i];
+      if (command !== undefined) {
+        const msg =
+          i === 0
+            ? `${this.textGreen(this.textBold(command))}`
+            : `${this.textBold(command)}`;
+        console.log(`${msg}\x1b[K`);
+      } else {
+        console.log(`-\x1b[K`);
+      }
+    }
+    this.moveCursorToSavedCurrentPos();
+  }
+
+  private renderIO(newChar: string = "", tabCompletion: boolean = false) {
+    if (tabCompletion) {
+      this.handleTabCompletion();
+    } else {
+      process.stdout.cursorTo(this.currentCursorPos.x - newChar.length);
+      process.stdout.write(
+        `${this.input.slice(
+          this.currentCursorPos.x - this.prefix.length - newChar.length
+        )}\x1b[K`
+      );
+    }
+    this.moveCursorToSavedCurrentPos();
+    const _options = this.getCurrentCommandNullableOptions();
+    const _nonNullOptions = this.getCurrentCommandNonNullableOptions();
+    const typedWord = this.getTypedWord();
+    const typedFlag = this.getTypedFlag();
+    const { base, args, options, input } = this.getCommandParams(
+      this.input,
+      _options
+    );
+
+    if (base === "") {
+      this.renderPastCommands();
+    } else if (base.length + this.prefix.length >= this.currentCursorPos.x) {
+      this.renderCommandList();
+      // input.length > 0 && input.includes(typedWord.word
+    } else if (input.length > 0 && input.includes(typedWord.word)) {
+      // Handle required inputs for commands
+      this.renderCommandArgs();
+    } else if (
+      // 1
+      _nonNullOptions.includes(typedFlag.flag) &&
+      !typedWord.word.replace(/--.*=/g, "").startsWith("-") &&
+      (args[typedFlag.flag] === undefined ||
+        args[typedFlag.flag] === "" ||
+        args[typedFlag.flag] === typedWord.word.replace(/--.*=/g, ""))
+    ) {
+      this.clearTerminalDownward();
+      // console.log("");
+      // console.log(
+      //   "_nonNullOptions.includes(typedFlag.flag):",
+      //   _nonNullOptions.includes(typedFlag.flag)
+      // );
+      // console.log(
+      //   "args[typedFlag.flag]:",
+      //   args[typedFlag.flag] || "NOT DEFINED"
+      // );
+      // console.log(
+      //   "_nonNullOptions.includes(typedFlag.start):",
+      //   typedFlag.start
+      // );
+      // console.log("_nonNullOptions.includes(typedFlag.end):", typedFlag.end);
+      // console.log("typedWord:", typedWord);
+      // const date = new Date();
+      // console.log(date.toUTCString());
+      this.renderOptionValues();
+    } else {
+      this.renderCommandOptions();
+    }
+  }
+
+  private handleTabCompletion() {
+    const { base, args, options } = this.getCommandParams(this.input);
+
+    // if (base === "") {
+    //   const list = this.savedInput.pastCommands || [];
+    //   const slicedList = list.slice(this.listItemIndex);
+    //   this.input = slicedList[0] || "";
+    //   process.stdout.write(this.input);
+    //   this.shiftCursorPosition(this.input.length);
+    // } else if (base.length + this.prefix.length >= this.currentCursorPos.x) {
+    //   const filteredList = Object.keys(this.firebaseCommands).filter(
+    //     (command) => command.startsWith(base)
+    //   );
+    //   const slicedList = filteredList.slice(this.listItemIndex);
+
+    //   if (slicedList[0] !== undefined) {
+    //     this.moveCursorToInputStart();
+    //     this.input = `${slicedList[0]}${this.input.replace(base, "")}`;
+    //     process.stdout.write(this.input);
+    //     this.shiftCursorPosition(slicedList[0].length);
+    //     this.listItemIndex = 0;
+    //   }
+    // } else {
+    const typedWord = this.getTypedWord();
+    const list = this.itemList;
+    const argList = Object.keys(args);
+    const filteredList = list.filter(
+      (_option) =>
+        _option.startsWith(typedWord.word) &&
+        ((!argList.includes(_option) && !options.includes(_option)) ||
+          _option === typedWord.word)
+    );
+
+    this.itemList = filteredList;
+    const slicedList = filteredList.slice(this.listItemIndex);
+    if (slicedList[0] !== undefined) {
+      const xPos = this.currentCursorPos.x - this.prefix.length;
+      this.shiftCursorPosition(-(xPos - typedWord.start));
+      process.stdout.write(
+        `${slicedList[0]}${this.input.slice(typedWord.end)}`
+      );
+      this.input = `${this.input.slice(0, typedWord.start)}${
+        slicedList[0]
+      }${this.input.slice(typedWord.end)}`;
+      this.shiftCursorPosition(slicedList[0].length);
+      this.listItemIndex = 0;
+    }
+    // }
+  }
+
+  protected getTypedWord(): {
     word: string;
     start: number;
     end: number;
   } {
     const posX = this.currentCursorPos.x - this.prefix.length;
-    const words = this.input.split(" ");
+    const words = this.input.replace(/=/g, " ").split(" ");
     for (let i = 0; i < words.length; i++) {
       const currentLen = words.slice(0, i + 1).join("").length + i;
       if (posX <= currentLen) {
@@ -237,89 +408,34 @@ export class OnFireCLI extends CommandLineInterface {
     };
   }
 
-  private renderCommandArgs() {
-    this.clearTerminalDownward();
-    // TODO: Handle args input
-    // console.log("");
-    // console.log("PROVIDE ARGS");
-    this.moveCursorToSavedCurrentPos();
-  }
-
-  private handleTabCompletion() {
-    const { base, args, options } = this.getCommandParams(this.input);
-
-    if (base === "") {
-      const list = this.savedInput.pastCommands || [];
-      const slicedList = list.slice(this.listItemIndex);
-      this.input = slicedList[0] || "";
-      process.stdout.write(this.input);
-      this.shiftCursorPosition(this.input.length);
-    } else if (base.length + this.prefix.length >= this.currentCursorPos.x) {
-      const filteredList = Object.keys(this.firebaseCommands).filter(
-        (command) => command.startsWith(base)
-      );
-      const slicedList = filteredList.slice(this.listItemIndex);
-
-      if (slicedList[0] !== undefined) {
-        this.moveCursorToInputStart();
-        this.input = `${slicedList[0]}${this.input.replace(base, "")}`;
-        process.stdout.write(this.input);
-        this.shiftCursorPosition(slicedList[0].length);
-        this.listItemIndex = 0;
-      }
-    } else {
-      const typedWord = this.getTypedWord();
-      const list = Object.keys(this.firebaseCommands[base].options);
-      const argList = Object.keys(args);
-      const filteredList = list.filter(
-        (_option) =>
-          _option.startsWith(typedWord.word) &&
-          ((!argList.includes(_option) && !options.includes(_option)) ||
-            _option === typedWord.word)
-      );
-
-      this.itemList = filteredList;
-      const slicedList = filteredList.slice(this.listItemIndex);
-      if (slicedList[0] !== undefined) {
-        const xPos = this.currentCursorPos.x - this.prefix.length;
-        this.shiftCursorPosition(-(xPos - typedWord.start));
-        process.stdout.write(
-          `${slicedList[0]}${this.input.slice(typedWord.end)}`
-        );
-        this.input = `${this.input.slice(0, typedWord.start)}${
-          slicedList[0]
-        }${this.input.slice(typedWord.end)}`;
-        this.shiftCursorPosition(slicedList[0].length);
-        this.listItemIndex = 0;
-      }
-    }
-  }
-
-  private renderIO(newChar: string = "", tabCompletion: boolean = false) {
-    if (tabCompletion) {
-      this.handleTabCompletion();
-    } else {
-      process.stdout.cursorTo(this.currentCursorPos.x - newChar.length);
-      process.stdout.write(
-        `${this.input.slice(
-          this.currentCursorPos.x - this.prefix.length - newChar.length
-        )}\x1b[K`
-      );
-    }
-    this.moveCursorToSavedCurrentPos();
+  protected getTypedFlag(): {
+    flag: string;
+    start: number;
+    end: number;
+  } {
+    const posX = this.currentCursorPos.x - this.prefix.length;
+    const trimmedInput = this.input.slice(0, posX);
     const _options = this.getCurrentCommandNullableOptions();
-    const typedWord = this.getTypedWord();
-    const { base, input } = this.getCommandParams(this.input, _options);
-    if (base === "") {
-      this.renderPastCommands();
-    } else if (base.length + this.prefix.length >= this.currentCursorPos.x) {
-      this.renderCommandList();
-    } else if (input.length > 0 && input.includes(typedWord.word)) {
-      // Handle required inputs for commands
-      this.renderCommandArgs();
-    } else {
-      this.renderCommandOptions();
+    const { flags } = this.getCommandParams(trimmedInput, _options);
+
+    const argFlags = flags;
+    const words = this.input.replace(/=/g, " ").split(" ");
+    for (let i = 0; i < words.length; i++) {
+      const currentLen = words.slice(0, i + 1).join("").length + i;
+      if (posX <= currentLen) {
+        return {
+          flag: argFlags.at(-1),
+          start: currentLen - words[i].length,
+          end: currentLen,
+        };
+      }
     }
+
+    return {
+      flag: argFlags.at(-1),
+      start: posX,
+      end: posX,
+    };
   }
 
   private onExit() {
@@ -343,29 +459,27 @@ export class OnFireCLI extends CommandLineInterface {
         });
       } else {
         this.savedInput.pastCommands.unshift(cmdInput);
+        if (this.savedInput.pastCommands.length >= MAX_CACHE_COUNT) {
+          this.savedInput.pastCommands = this.savedInput.pastCommands.splice(
+            0,
+            MAX_CACHE_COUNT
+          );
+        }
       }
     }
 
     // Handle args
     const argFlags = Object.keys(args);
-    // console.log(argFlags);
     for (let i = 0; i < argFlags.length; i++) {
       const argFlag = argFlags[i];
-      // console.log(args[argFlag]);
       if (this.savedInput[argFlag] === undefined) {
-        // console.log("CREATE");
         this.savedInput[argFlag] = [args[argFlag]];
       } else {
-        // console.log("PUSH");
         if (!this.savedInput[argFlag].includes(args[argFlag])) {
           this.savedInput[argFlag].push(args[argFlag]);
         }
       }
-      // const _savedArgFlag = this.savedInput[argFlag] || [];
-      // this.savedInput[argFlag] = {};
     }
-
-    // console.log(this.savedInput);
   }
 
   private async runCommand({
@@ -519,7 +633,7 @@ export class OnFireCLI extends CommandLineInterface {
       // console.log(options);
       // console.log(input);
       // -------------- DEBUGGING --------------
-      this.runCommand({ debugging: true });
+      this.runCommand({ debugging: false });
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
         this.listItemIndex -= 1;
