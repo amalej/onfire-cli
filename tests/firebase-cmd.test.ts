@@ -74,7 +74,7 @@ describe("Find global node_module paths", () => {
   );
 
   it("Should load commands using the Firebase Tools module", async () => {
-    const commands = firebaseCommands._getCommandsUsingModule();
+    const commands = await firebaseCommands._getCommandsUsingModule();
     expect(commands).toBeDefined();
   });
 });

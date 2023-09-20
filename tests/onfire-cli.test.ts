@@ -1,6 +1,11 @@
 import { OnFireCLI } from "../src/onfire-cli";
 import { MockFirebaseCommands } from "./firebase-cmd.test";
 
+interface SavedInput {
+  pastCommands?: string[] | undefined;
+  [key: string]: any;
+}
+
 class MockOnFireCLI extends OnFireCLI {
   _getCurrentCommandNullableOptions(): string[] {
     return this.getCurrentCommandNullableOptions();
@@ -36,6 +41,18 @@ class MockOnFireCLI extends OnFireCLI {
 
   _getTypeFlag(): { flag: string; start: number; end: number } {
     return this.getTypedFlag();
+  }
+
+  _updateSavedInput(): void {
+    return this.updateSavedInput();
+  }
+
+  _getSavedInput(): SavedInput {
+    return this.getSavedInput();
+  }
+
+  _setSavedInput(obj: Object): void {
+    return this.setSavedInput(obj);
   }
 }
 
@@ -275,5 +292,49 @@ describe("Get typed flag", () => {
 
     const typedWord = cli._getTypeFlag();
     expect(typedWord.flag).toEqual("--port");
+  });
+});
+
+describe("Update the saved inputs", () => {
+  const cli = new MockOnFireCLI();
+  beforeAll(async () => {
+    await cli._loadFirebaseCommands();
+  });
+
+  it("Should show that --app input saved value is '1:1234567890:ios:321abc456def7890'", () => {
+    cli._setInput(
+      "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890"
+    );
+    cli._updateSavedInput();
+    const savedInput = cli._getSavedInput();
+    expect(savedInput["--app"][0]).toEqual("1:1234567890:ios:321abc456def7890");
+  });
+
+  it("Should show that --project input saved value is 'demo-proj'", () => {
+    cli._setInput(
+      "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890 --project demo-proj"
+    );
+    cli._updateSavedInput();
+    const savedInput = cli._getSavedInput();
+    expect(savedInput["--project"][0]).toEqual("demo-proj");
+  });
+
+  it("Should show that --project input saved value is 'demo-project', 'demo-proj'", () => {
+    // First input
+    cli._setInput(
+      "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890 --project demo-proj"
+    );
+    cli._updateSavedInput();
+    // Second input
+    cli._setInput(
+      "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890 --project demo-project"
+    );
+    cli._updateSavedInput();
+    const savedInput = cli._getSavedInput();
+    expect(savedInput["--project"]).toEqual(["demo-project", "demo-proj"]);
+  });
+
+  afterEach(() => {
+    cli._setSavedInput({}); // Reset the saved input for each test
   });
 });
