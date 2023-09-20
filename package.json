@@ -12,8 +12,11 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "test": "jest --coverage --verbose",
+    "test:cli-cache": "jest --coverage -- cli-cache.test.ts",
+    "test:cli": "jest --coverage -- cli.test.ts",
+    "test:firebase-cmd": "jest --coverage -- firebase-cmd.test.ts",
     "test:onfire-cli": "jest --coverage -- onfire-cli.test.ts",
-    "test:cli-cache": "jest --coverage -- cli-cache.test.ts"
+    "test:package-json": "jest --coverage -- package-json.test.ts"
   },
   "bin": {
     "onfire": "./dist/index.js"
