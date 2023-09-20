@@ -1,4 +1,4 @@
-import { ChildProcess, SpawnOptions, exec } from "child_process";
+import { ChildProcess, SpawnOptions, exec, fork } from "child_process";
 import spawn from "cross-spawn";
 
 interface CommandConfiguration {
@@ -82,11 +82,35 @@ export class FirebaseCommands {
         bufferString += data;
       });
 
-      npmSpawnPath.stdout.on("end", () => {
+      npmSpawnPath.stdout.on("end", async () => {
         clearTimeout(rejectTimout);
         const rootPath = bufferString.toString().trim();
         try {
-          this.client = require(`${rootPath}/firebase-tools`);
+          // Send child process some work
+
+          const childResponse = await new Promise((res, rej) => {
+            const childRejectTimout = setTimeout(() => {
+              reject("Error");
+            }, COMMAND_TIMEOUT);
+            var child = fork(`${__dirname}/module-loader.js`);
+
+            let childBufferString = "";
+            child.on("message", function (m: string) {
+              // Receive results from child process
+              childBufferString += m;
+              clearTimeout(childRejectTimout);
+              child.kill("SIGINT"); // Kill the child process. Process will continue running if not done
+            });
+
+            child.on("exit", () => {
+              res(JSON.parse(childBufferString));
+            });
+
+            child.send(`${rootPath}/firebase-tools`);
+          });
+
+          // await new Promise((res, rej) => setTimeout(res, 5000));
+          resolve(childResponse);
         } catch (error) {
           if (error.code === "MODULE_NOT_FOUND") {
             reject(
@@ -98,7 +122,6 @@ export class FirebaseCommands {
             new Error(`Unexpected error was raised. ${error.message}`);
           }
         }
-        resolve(this.client);
       });
     });
   }
@@ -107,7 +130,8 @@ export class FirebaseCommands {
     return `${start}${str}${end}`;
   }
 
-  protected getCommandsUsingModule() {
+  protected async getCommandsUsingModule() {
+    this.client = await this.loadFirebaseModule();
     const commandConfig = this.client.cli.commands.reduce(
       (comMap: any, com: any) => {
         comMap[com._name] = {
@@ -173,7 +197,6 @@ export class FirebaseCommands {
   }
 
   async getCommandConfig(): Promise<{ [key: string]: any }> {
-    await this.loadFirebaseModule();
     const _out = this.getCommandsUsingModule();
     return _out;
   }
