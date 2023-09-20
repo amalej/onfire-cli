@@ -64,6 +64,14 @@ export class OnFireCLI extends CommandLineInterface {
     this.savedInput = savedInput;
   }
 
+  protected getSavedInput() {
+    return this.savedInput;
+  }
+
+  protected setSavedInput(obj: Object) {
+    this.savedInput = obj;
+  }
+
   /**
    * Get a string array of flags that do not expect an argument
    * @returns An array of string
@@ -408,7 +416,7 @@ export class OnFireCLI extends CommandLineInterface {
     console.log(`${this.textGreen("OnFire:")} exit`);
   }
 
-  private updateSavedInput() {
+  protected updateSavedInput() {
     const _options = this.getCurrentCommandNullableOptions();
     const { base, args, input } = this.getCommandParams(this.input, _options);
     const cmdInput = this.input.trim();
