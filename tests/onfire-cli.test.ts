@@ -334,6 +334,26 @@ describe("Update the saved inputs", () => {
     expect(savedInput["--project"]).toEqual(["demo-project", "demo-proj"]);
   });
 
+  it("Should show that 'feature' input saved value is 'functions'", () => {
+    cli._setInput("init functions --project demo-project");
+    cli._updateSavedInput();
+    const savedInput = cli._getSavedInput();
+    expect(savedInput["--project"][0]).toEqual("demo-project");
+    expect(savedInput["feature"][0]).toEqual("functions");
+  });
+
+  it("Should show that 'feature' input saved value is list 'functions,firestore'", () => {
+    cli._setInput("init functions,firestore --project demo-project");
+    cli._updateSavedInput();
+    const savedInput = cli._getSavedInput();
+    expect(savedInput["--project"][0]).toEqual("demo-project");
+    expect(savedInput["feature"]).toEqual([
+      "functions,firestore",
+      "functions",
+      "firestore",
+    ]);
+  });
+
   afterEach(() => {
     cli._setSavedInput({}); // Reset the saved input for each test
   });
