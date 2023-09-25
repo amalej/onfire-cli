@@ -49,7 +49,7 @@ export class OnFireCLI extends CommandLineInterface {
 
   constructor({
     prefix = "",
-    maxItemShown = 4,
+    maxItemShown = 5,
     savedInput = {},
   }: {
     prefix?: string;
@@ -135,7 +135,6 @@ export class OnFireCLI extends CommandLineInterface {
         console.log(`-\x1b[K`);
       }
     }
-    this.moveCursorToSavedCurrentPos();
   }
 
   private renderCommandList() {
@@ -166,15 +165,13 @@ export class OnFireCLI extends CommandLineInterface {
         console.log(`-\x1b[K`);
       }
     }
-
-    this.moveCursorToSavedCurrentPos();
   }
 
   private renderCommandOptions() {
     if (this.isHelpProcessRunning || this.cancelPendingRenders) return;
     const { base, args, options } = this.getCommandParams(this.input);
     this.clearTerminalDownward();
-    console.log("");
+    this.renderCommandInfo({ highlight: "options" });
     const cmdConfig = this.firebaseCommands[base];
     if (cmdConfig !== undefined) {
       const typedWord = this.getTypedWord();
@@ -190,31 +187,6 @@ export class OnFireCLI extends CommandLineInterface {
       this.itemList = filteredList;
 
       const slicedList = filteredList.slice(this.listItemIndex);
-
-      const missingArgs: Array<CommandOptionsConfig> = [];
-      for (let option of list) {
-        if (_options[option].hint !== null && options.includes(option)) {
-          missingArgs.push(_options[option]);
-        }
-      }
-
-      if (missingArgs.length > 0) {
-        const msg = [];
-        for (let missingArg of missingArgs) {
-          msg.push(
-            `${missingArg.option} ${this.textBold(
-              this.textYellow(missingArg.hint)
-            )}`
-          );
-        }
-        console.log(
-          `${this.textBold(this.textRed("Missing:"))} ${msg.join(", ")}`
-        );
-      } else {
-        console.log(
-          `${this.textBold(this.textYellow("Usage:"))} ${cmdConfig.usage}`
-        );
-      }
 
       for (let i = 0; i < this.maxItemShown; i++) {
         const _option = slicedList[i];
@@ -235,21 +207,40 @@ export class OnFireCLI extends CommandLineInterface {
     } else {
       console.log(`${this.textBold(this.textRed("Error:"))} Command not found`);
     }
-    this.moveCursorToSavedCurrentPos();
   }
 
   private renderCommandArgs() {
+    const { base, input } = this.getCommandParams(this.input);
     this.clearTerminalDownward();
     // TODO: Handle args input
-    console.log("");
-    console.log("[Provide args]");
-    this.moveCursorToSavedCurrentPos();
+    const argName = Object.keys(this.firebaseCommands[base].args)[input.length];
+    this.renderCommandInfo({ highlight: argName });
+    const list = this.savedInput[argName] || [];
+    const typedWord = this.getTypedWord();
+
+    const filteredList = list.filter((argVal: string) =>
+      argVal.startsWith(typedWord.word)
+    );
+    this.itemList = list;
+    const slicedList = filteredList.slice(this.listItemIndex);
+
+    for (let i = 0; i < this.maxItemShown; i++) {
+      const command = slicedList[i];
+      if (command !== undefined) {
+        const msg =
+          i === 0
+            ? `${this.textGreen(this.textBold(command))}`
+            : `${this.textBold(command)}`;
+        console.log(`${msg}\x1b[K`);
+      } else {
+        console.log(`-\x1b[K`);
+      }
+    }
   }
 
   private renderOptionValues() {
     const { base } = this.getCommandParams(this.input);
     this.clearTerminalDownward();
-
     console.log("");
     const typedFlag = this.getTypedFlag();
     const msg = `${this.textBold(
@@ -278,7 +269,44 @@ export class OnFireCLI extends CommandLineInterface {
         console.log(`-\x1b[K`);
       }
     }
-    this.moveCursorToSavedCurrentPos();
+  }
+
+  private renderCommandInfo({ highlight }: { highlight?: string } = {}) {
+    this.clearTerminalDownward();
+    console.log("");
+    const { base, options } = this.getCommandParams(this.input);
+    const _options = this.firebaseCommands[base].options || {};
+    const list = Object.keys(_options);
+    const missingArgs: Array<CommandOptionsConfig> = [];
+    const cmdConfig = this.firebaseCommands[base];
+    for (let option of list) {
+      if (_options[option].hint !== null && options.includes(option)) {
+        missingArgs.push(_options[option]);
+      }
+    }
+
+    if (missingArgs.length > 0) {
+      const msg = [];
+      for (let missingArg of missingArgs) {
+        msg.push(
+          `${missingArg.option} ${this.textBold(
+            this.textYellow(missingArg.hint)
+          )}`
+        );
+      }
+      console.log(
+        `${this.textBold(this.textRed("Missing:"))} ${msg.join(", ")}`
+      );
+    } else {
+      // TODO: improve matching. try to avoid using regex
+      const regExp = new RegExp(`(\\b${highlight}\\b)(?!.*\\1)`);
+      console.log(
+        `${this.textBold(this.textYellow("Usage:"))} ${cmdConfig.usage.replace(
+          regExp,
+          (str) => this.textGreen(str)
+        )}`
+      );
+    }
   }
 
   private renderIO(newChar: string = "", tabCompletion: boolean = false) {
@@ -307,20 +335,28 @@ export class OnFireCLI extends CommandLineInterface {
     } else if (base.length + this.prefix.length >= this.currentCursorPos.x) {
       this.renderCommandList();
       // input.length > 0 && input.includes(typedWord.word
-    } else if (input.length > 0 && input.includes(typedWord.word)) {
-      // Handle required inputs for commands
-      this.renderCommandArgs();
-    } else if (
-      _nonNullOptions.includes(typedFlag.flag) &&
-      !typedWord.word.replace(/--.*=/g, "").startsWith("-") &&
-      (args[typedFlag.flag] === undefined ||
-        args[typedFlag.flag] === "" ||
-        args[typedFlag.flag] === typedWord.word.replace(/--.*=/g, ""))
-    ) {
-      this.renderOptionValues();
+    } else if (this.firebaseCommands[base]) {
+      if (
+        _nonNullOptions.includes(typedFlag.flag) &&
+        !typedWord.word.replace(/--.*=/g, "").startsWith("-") &&
+        (args[typedFlag.flag] === undefined ||
+          args[typedFlag.flag] === "" ||
+          args[typedFlag.flag] === typedWord.word.replace(/--.*=/g, ""))
+      ) {
+        this.renderOptionValues();
+      } else if (typedWord.word.startsWith("-")) {
+        this.renderCommandOptions();
+      } else if (
+        Object.keys(this.firebaseCommands[base].args).length > input.length
+      ) {
+        this.renderCommandArgs();
+      } else {
+        this.renderCommandInfo();
+      }
     } else {
-      this.renderCommandOptions();
+      this.clearTerminalDownward();
     }
+    this.moveCursorToSavedCurrentPos();
   }
 
   private handleTabCompletion() {
@@ -440,22 +476,58 @@ export class OnFireCLI extends CommandLineInterface {
       }
     }
 
-    // Handle args
-    const argFlags = Object.keys(args);
-    for (let i = 0; i < argFlags.length; i++) {
-      const argFlag = argFlags[i];
-      if (this.savedInput[argFlag] === undefined) {
-        this.savedInput[argFlag] = [args[argFlag]];
+    // Handle options args
+    const optArgFlags = Object.keys(args);
+    for (let i = 0; i < optArgFlags.length; i++) {
+      const optArgFlag = optArgFlags[i];
+      if (this.savedInput[optArgFlag] === undefined) {
+        if (args[optArgFlag].includes(",")) {
+          const _splitArg =
+            args[optArgFlag].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+          this.savedInput[optArgFlag] = [args[optArgFlag], ..._splitArg];
+        } else {
+          this.savedInput[optArgFlag] = [args[optArgFlag]];
+        }
       } else {
         // if (!this.savedInput[argFlag].includes(args[argFlag])) {
-        if (args[argFlag].includes(",")) {
+        if (args[optArgFlag].includes(",")) {
           const _splitArg =
-            args[argFlag].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+            args[optArgFlag].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+          if (_splitArg.length !== 0) {
+            this.savedInput[optArgFlag].unshift(..._splitArg);
+          }
+        }
+        this.savedInput[optArgFlag].unshift(args[optArgFlag]);
+        this.savedInput[optArgFlag] = [...new Set(this.savedInput[optArgFlag])];
+      }
+    }
+
+    // Handle commands args
+    console.log(this.firebaseCommands[base].args);
+    const cmdArgConfig = this.firebaseCommands[base].args;
+    const argFlags = Object.keys(cmdArgConfig);
+    console.log(argFlags);
+    console.log(input);
+    for (let i = 0; i < argFlags.length; i++) {
+      if (input[i] === undefined) continue; // In case user does not input a command argument
+      const argFlag = argFlags[i];
+      if (this.savedInput[argFlag] === undefined) {
+        if (input[i].includes(",")) {
+          const _splitArg =
+            input[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+          this.savedInput[argFlag] = [input[i], ..._splitArg];
+        } else {
+          this.savedInput[argFlag] = [input[i]];
+        }
+      } else {
+        if (input[i].includes(",")) {
+          const _splitArg =
+            input[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
           if (_splitArg.length !== 0) {
             this.savedInput[argFlag].unshift(..._splitArg);
           }
         }
-        this.savedInput[argFlag].unshift(args[argFlag]);
+        this.savedInput[argFlag].unshift(input[i]);
         this.savedInput[argFlag] = [...new Set(this.savedInput[argFlag])];
       }
     }
@@ -489,10 +561,6 @@ export class OnFireCLI extends CommandLineInterface {
       this.updateSavedInput();
       this.cancelPendingRenders = false;
       process.stdout.cursorTo(0);
-      const exitMessage = `${this.textGreen(
-        "OnFire:"
-      )} Command finished with exit code ${this.textGreen("0")}\n`;
-      console.log(exitMessage);
       console.log(this.savedInput);
       process.stdin.setRawMode(true);
       process.stdin.resume();
