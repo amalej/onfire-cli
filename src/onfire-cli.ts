@@ -121,15 +121,22 @@ export class OnFireCLI extends CommandLineInterface {
     console.log("");
     this.itemList = list;
 
-    const slicedList = list.slice(this.listItemIndex);
+    // const slicedList = list.slice(this.listItemIndex);
+    const slicedList = list.slice(
+      this.displayBuffer.start,
+      this.displayBuffer.end
+    );
 
-    for (let i = 0; i < this.maxItemShown; i++) {
-      const command = slicedList[i];
+    for (let i = 0; i < this.itemList.length; i++) {
+      const command = this.itemList[i];
+      if (!slicedList.includes(command)) continue;
       if (command !== undefined) {
         const msg =
-          i === 0
-            ? `${this.textGreen(this.textBold(command))}`
-            : `${this.textBold(command)}`;
+          i === this.listItemIndex
+            ? `${this.textCyan(this.textBold(">"))} ${this.textGreen(
+                this.textBold(command)
+              )}`
+            : `  ${this.textBold(command)}`;
         console.log(`${msg}\x1b[K`);
       } else {
         console.log(`-\x1b[K`);
@@ -146,20 +153,25 @@ export class OnFireCLI extends CommandLineInterface {
     const filteredList = list.filter((command: string) =>
       command.startsWith(baseCommand)
     );
+
     this.itemList = filteredList;
+    // const slicedList = filteredList.slice(this.listItemIndex);
+    const slicedList = filteredList.slice(
+      this.displayBuffer.start,
+      this.displayBuffer.end
+    );
 
-    const slicedList = filteredList.slice(this.listItemIndex);
-
-    for (let i = 0; i < this.maxItemShown; i++) {
-      const command = slicedList[i];
+    for (let i = 0; i < this.itemList.length; i++) {
+      const command = this.itemList[i];
+      if (!slicedList.includes(command)) continue;
       if (command !== undefined) {
         const cmdLabel = `-> ${this.firebaseCommands[command].description}`;
         const msg =
-          i === 0
-            ? `${this.textGreen(this.textBold(command))} ${this.textGreen(
-                cmdLabel
-              )}`
-            : `${this.textBold(command)} ${cmdLabel}`;
+          i === this.listItemIndex
+            ? `${this.textCyan(this.textBold(">"))} ${this.textGreen(
+                this.textBold(command)
+              )} ${this.textGreen(cmdLabel)}`
+            : `  ${this.textBold(command)} ${cmdLabel}`;
         console.log(`${msg}\x1b[K`);
       } else {
         console.log(`-\x1b[K`);
@@ -186,19 +198,24 @@ export class OnFireCLI extends CommandLineInterface {
       );
       this.itemList = filteredList;
 
-      const slicedList = filteredList.slice(this.listItemIndex);
+      // const slicedList = filteredList.slice(this.listItemIndex);
+      const slicedList = filteredList.slice(
+        this.displayBuffer.start,
+        this.displayBuffer.end
+      );
 
-      for (let i = 0; i < this.maxItemShown; i++) {
-        const _option = slicedList[i];
+      for (let i = 0; i < this.itemList.length; i++) {
+        const _option = this.itemList[i];
+        if (!slicedList.includes(_option)) continue;
         if (_option !== undefined) {
           const optString = `${_option} ${_options[_option].hint || ""}`;
           const optDescription = `-> ${_options[_option].description}`;
           const msg =
-            i === 0
-              ? `${this.textGreen(this.textBold(optString))} ${this.textGreen(
-                  optDescription
-                )}`
-              : `${this.textBold(optString)} ${optDescription}`;
+            i === this.listItemIndex
+              ? `${this.textCyan(this.textBold(">"))} ${this.textGreen(
+                  this.textBold(optString)
+                )} ${this.textGreen(optDescription)}`
+              : `  ${this.textBold(optString)} ${optDescription}`;
           console.log(`${msg}\x1b[K`);
         } else {
           console.log(`-\x1b[K`);
@@ -222,15 +239,22 @@ export class OnFireCLI extends CommandLineInterface {
       argVal.startsWith(typedWord.word)
     );
     this.itemList = list;
-    const slicedList = filteredList.slice(this.listItemIndex);
+    // const slicedList = filteredList.slice(this.listItemIndex);
+    const slicedList = filteredList.slice(
+      this.displayBuffer.start,
+      this.displayBuffer.end
+    );
 
-    for (let i = 0; i < this.maxItemShown; i++) {
-      const command = slicedList[i];
+    for (let i = 0; i < this.itemList.length; i++) {
+      const command = this.itemList[i];
+      if (!slicedList.includes(command)) continue;
       if (command !== undefined) {
         const msg =
-          i === 0
-            ? `${this.textGreen(this.textBold(command))}`
-            : `${this.textBold(command)}`;
+          i === this.listItemIndex
+            ? `${this.textCyan(this.textBold(">"))} ${this.textGreen(
+                this.textBold(command)
+              )}`
+            : `  ${this.textBold(command)}`;
         console.log(`${msg}\x1b[K`);
       } else {
         console.log(`-\x1b[K`);
@@ -255,15 +279,22 @@ export class OnFireCLI extends CommandLineInterface {
       argVal.startsWith(typedWord.word.replace(/--.*=/g, ""))
     );
     this.itemList = list;
-    const slicedList = filteredList.slice(this.listItemIndex);
+    // const slicedList = filteredList.slice(this.listItemIndex);
+    const slicedList = filteredList.slice(
+      this.displayBuffer.start,
+      this.displayBuffer.end
+    );
 
-    for (let i = 0; i < this.maxItemShown; i++) {
-      const command = slicedList[i];
+    for (let i = 0; i < this.itemList.length; i++) {
+      const command = this.itemList[i];
+      if (!slicedList.includes(command)) continue;
       if (command !== undefined) {
         const msg =
-          i === 0
-            ? `${this.textGreen(this.textBold(command))}`
-            : `${this.textBold(command)}`;
+          i === this.listItemIndex
+            ? `${this.textCyan(this.textBold(">"))} ${this.textGreen(
+                this.textBold(command)
+              )}`
+            : `  ${this.textBold(command)}`;
         console.log(`${msg}\x1b[K`);
       } else {
         console.log(`-\x1b[K`);
@@ -671,6 +702,10 @@ export class OnFireCLI extends CommandLineInterface {
       if (xPos > 0) {
         render = true;
         this.listItemIndex = 0;
+        this.displayBuffer = {
+          start: 0,
+          end: this.maxItemShown,
+        };
         const endString = this.input.trim().slice(xPos);
         this.input = this.input.slice(0, xPos - 1) + endString;
         this.currentCursorPos.x -= 1;
@@ -679,17 +714,29 @@ export class OnFireCLI extends CommandLineInterface {
       this.moveCursorToInputStart();
       this.shiftCursorPosition(this.input.length);
       this.listItemIndex = 0;
+      this.displayBuffer = {
+        start: 0,
+        end: this.maxItemShown,
+      };
       this.createTerminalBuffer();
       this.clearTerminalDownward();
-      this.runCommand({ debugging: false });
+      this.runCommand({ debugging: true });
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
         this.listItemIndex -= 1;
+        if (this.listItemIndex < this.displayBuffer.start) {
+          this.displayBuffer.start -= 1;
+          this.displayBuffer.end -= 1;
+        }
         render = true;
       }
     } else if (key.name === "down") {
       if (this.listItemIndex < this.itemList.length - 1) {
         this.listItemIndex += 1;
+        if (this.listItemIndex >= this.displayBuffer.end) {
+          this.displayBuffer.start += 1;
+          this.displayBuffer.end += 1;
+        }
         render = true;
       }
     } else if (key.name === "left") {
@@ -709,6 +756,10 @@ export class OnFireCLI extends CommandLineInterface {
       render = true;
       newChar = str;
       this.listItemIndex = 0;
+      this.displayBuffer = {
+        start: 0,
+        end: this.maxItemShown,
+      };
       this.currentCursorPos.x += 1;
       this.input =
         this.input.slice(0, this.currentCursorPos.x - prefixLen - 1) +
