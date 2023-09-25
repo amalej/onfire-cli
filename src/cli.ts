@@ -3,6 +3,11 @@ interface CursorPosition {
   y: number;
 }
 
+interface DisplayBuffer {
+  start: number;
+  end: number;
+}
+
 export class CommandLineInterface {
   prefix = "";
   maxItemShown: number;
@@ -15,6 +20,10 @@ export class CommandLineInterface {
     x: 0,
     y: 0,
   };
+  protected displayBuffer: DisplayBuffer = {
+    start: 0,
+    end: 0,
+  };
 
   constructor({
     prefix = "",
@@ -23,6 +32,10 @@ export class CommandLineInterface {
     this.prefix = prefix;
     this.displayDownBuffer = Math.ceil(maxItemShown * 1.5) + 3;
     this.maxItemShown = maxItemShown;
+    this.displayBuffer = {
+      start: 0,
+      end: this.maxItemShown,
+    };
   }
 
   protected getCursorPosition(): Promise<CursorPosition> {
@@ -173,6 +186,10 @@ export class CommandLineInterface {
 
   protected textYellow(str: string) {
     return `\x1b[33m${str}\x1b[0m`;
+  }
+
+  protected textCyan(str: string) {
+    return `\x1b[36m${str}\x1b[0m`;
   }
 
   protected textBold(str: string) {
