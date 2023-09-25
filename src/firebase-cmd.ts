@@ -73,7 +73,11 @@ export class FirebaseCommands {
   protected async loadFirebaseModule() {
     return new Promise((resolve, reject) => {
       const rejectTimout = setTimeout(() => {
-        reject("Error");
+        reject(
+          new Error(
+            `Firebase Tools module could not be loaded. Exceeded ${COMMAND_TIMEOUT} ms timeout.`
+          )
+        );
       }, COMMAND_TIMEOUT);
       const npmSpawnPath = exec("npm root -g");
 
@@ -90,7 +94,11 @@ export class FirebaseCommands {
 
           const childResponse = await new Promise((res, rej) => {
             const childRejectTimout = setTimeout(() => {
-              reject("Error");
+              reject(
+                new Error(
+                  `Firebase Tools module could not be loaded. Exceeded ${COMMAND_TIMEOUT} ms timeout.`
+                )
+              );
             }, COMMAND_TIMEOUT);
             var child = fork(`${__dirname}/module-loader.js`);
 
