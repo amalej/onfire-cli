@@ -18,10 +18,10 @@ export class CommandLineInterface {
 
   constructor({
     prefix = "",
-    maxItemShown = 4,
+    maxItemShown = 5,
   }: { prefix?: string; maxItemShown?: number } = {}) {
     this.prefix = prefix;
-    this.displayDownBuffer = Math.ceil(maxItemShown * 2) + 4;
+    this.displayDownBuffer = Math.ceil(maxItemShown * 1.5) + 3;
     this.maxItemShown = maxItemShown;
   }
 
