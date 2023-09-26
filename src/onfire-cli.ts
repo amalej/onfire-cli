@@ -35,8 +35,6 @@ interface SavedInput {
 export class OnFireCLI extends CommandLineInterface {
   input = "";
 
-  private cancelPendingRenders = false;
-  private isHelpProcessRunning = false;
   private firebaseSpawn: ChildProcess | null = null;
   private listItemIndex: number = 0;
   private itemList: Array<string> = [];
@@ -114,19 +112,15 @@ export class OnFireCLI extends CommandLineInterface {
     return Object.keys(this.firebaseCommands[base].args);
   }
 
-  private renderPastCommands() {
+  protected getItemsToDisplay(itemList: string[]) {
+    return itemList.slice(this.displayBuffer.start, this.displayBuffer.end);
+  }
+
+  protected getPastCommandsToRender(): string[] {
+    const renderMessage = [];
     const list = this.savedInput.pastCommands || [];
-    this.clearTerminalDownward();
-
-    console.log("");
     this.itemList = list;
-
-    // const slicedList = list.slice(this.listItemIndex);
-    const slicedList = list.slice(
-      this.displayBuffer.start,
-      this.displayBuffer.end
-    );
-
+    const slicedList = this.getItemsToDisplay(list);
     for (let i = 0; i < this.itemList.length; i++) {
       const command = this.itemList[i];
       if (!slicedList.includes(command)) continue;
@@ -137,29 +131,26 @@ export class OnFireCLI extends CommandLineInterface {
                 this.textBold(command)
               )}`
             : `  ${this.textBold(command)}`;
-        console.log(`${msg}\x1b[K`);
+        renderMessage.push(`${msg}\x1b[K`);
       } else {
-        console.log(`-\x1b[K`);
+        renderMessage.push(`-\x1b[K`);
       }
     }
+    return renderMessage;
   }
 
-  private renderCommandList() {
+  protected getCommandsToRender(): string[] {
+    const renderMessage = [];
+    const { base } = this.getCommandParams(this.input);
     const list = Object.keys(this.firebaseCommands);
-    const baseCommand = this.input.split(" ")[0];
-    this.clearTerminalDownward();
 
-    console.log("");
     const filteredList = list.filter((command: string) =>
-      command.startsWith(baseCommand)
+      command.startsWith(base)
     );
 
     this.itemList = filteredList;
     // const slicedList = filteredList.slice(this.listItemIndex);
-    const slicedList = filteredList.slice(
-      this.displayBuffer.start,
-      this.displayBuffer.end
-    );
+    const slicedList = this.getItemsToDisplay(filteredList);
 
     for (let i = 0; i < this.itemList.length; i++) {
       const command = this.itemList[i];
@@ -172,54 +163,79 @@ export class OnFireCLI extends CommandLineInterface {
                 this.textBold(command)
               )} ${this.textGreen(cmdLabel)}`
             : `  ${this.textBold(command)} ${cmdLabel}`;
-        console.log(`${msg}\x1b[K`);
+        renderMessage.push(`${msg}\x1b[K`);
       } else {
-        console.log(`-\x1b[K`);
+        renderMessage.push(`-\x1b[K`);
       }
+    }
+    return renderMessage;
+  }
+
+  protected getCommandOptionsToRender(): string[] {
+    const renderMessage = [];
+    const { base, args, options } = this.getCommandParams(this.input);
+    const typedWord = this.getTypedWord();
+    const _options = this.firebaseCommands[base].options || {};
+    const list = Object.keys(_options);
+    const argList = Object.keys(args);
+    const filteredList = list.filter(
+      (_option) =>
+        _option.startsWith(typedWord.word) &&
+        ((!argList.includes(_option) && !options.includes(_option)) ||
+          _option === typedWord.word)
+    );
+    this.itemList = filteredList;
+
+    // const slicedList = filteredList.slice(this.listItemIndex);
+    const slicedList = this.getItemsToDisplay(filteredList);
+
+    for (let i = 0; i < this.itemList.length; i++) {
+      const _option = this.itemList[i];
+      if (!slicedList.includes(_option)) continue;
+      if (_option !== undefined) {
+        const optString = `${_option} ${_options[_option].hint || ""}`;
+        const optDescription = `-> ${_options[_option].description}`;
+        const msg =
+          i === this.listItemIndex
+            ? `${this.textCyan(this.textBold(">"))} ${this.textGreen(
+                this.textBold(optString)
+              )} ${this.textGreen(optDescription)}`
+            : `  ${this.textBold(optString)} ${optDescription}`;
+        renderMessage.push(`${msg}\x1b[K`);
+      } else {
+        renderMessage.push(`-\x1b[K`);
+      }
+    }
+    return renderMessage;
+  }
+
+  private renderPastCommands() {
+    this.clearTerminalDownward();
+    console.log("");
+    const renderMessage = this.getPastCommandsToRender();
+    for (let i = 0; i < renderMessage.length; i++) {
+      console.log(renderMessage[i]);
+    }
+  }
+
+  private renderCommandList() {
+    this.clearTerminalDownward();
+    console.log("");
+    const renderMessage = this.getCommandsToRender();
+    for (let i = 0; i < renderMessage.length; i++) {
+      console.log(renderMessage[i]);
     }
   }
 
   private renderCommandOptions() {
-    if (this.isHelpProcessRunning || this.cancelPendingRenders) return;
     const { base, args, options } = this.getCommandParams(this.input);
     this.clearTerminalDownward();
     this.renderCommandInfo({ highlight: "options" });
     const cmdConfig = this.firebaseCommands[base];
     if (cmdConfig !== undefined) {
-      const typedWord = this.getTypedWord();
-      const _options = this.firebaseCommands[base].options || {};
-      const list = Object.keys(_options);
-      const argList = Object.keys(args);
-      const filteredList = list.filter(
-        (_option) =>
-          _option.startsWith(typedWord.word) &&
-          ((!argList.includes(_option) && !options.includes(_option)) ||
-            _option === typedWord.word)
-      );
-      this.itemList = filteredList;
-
-      // const slicedList = filteredList.slice(this.listItemIndex);
-      const slicedList = filteredList.slice(
-        this.displayBuffer.start,
-        this.displayBuffer.end
-      );
-
-      for (let i = 0; i < this.itemList.length; i++) {
-        const _option = this.itemList[i];
-        if (!slicedList.includes(_option)) continue;
-        if (_option !== undefined) {
-          const optString = `${_option} ${_options[_option].hint || ""}`;
-          const optDescription = `-> ${_options[_option].description}`;
-          const msg =
-            i === this.listItemIndex
-              ? `${this.textCyan(this.textBold(">"))} ${this.textGreen(
-                  this.textBold(optString)
-                )} ${this.textGreen(optDescription)}`
-              : `  ${this.textBold(optString)} ${optDescription}`;
-          console.log(`${msg}\x1b[K`);
-        } else {
-          console.log(`-\x1b[K`);
-        }
+      const renderMessage = this.getCommandOptionsToRender();
+      for (let i = 0; i < renderMessage.length; i++) {
+        console.log(renderMessage[i]);
       }
     } else {
       console.log(`${this.textBold(this.textRed("Error:"))} Command not found`);
@@ -229,7 +245,7 @@ export class OnFireCLI extends CommandLineInterface {
   private renderCommandArgs() {
     const { base, input } = this.getCommandParams(this.input);
     this.clearTerminalDownward();
-    // TODO: Handle args input
+    // TODO: Handle args input and multiple args input
     const argName = Object.keys(this.firebaseCommands[base].args)[input.length];
     this.renderCommandInfo({ highlight: argName });
     const list = this.savedInput[argName] || [];
@@ -240,10 +256,7 @@ export class OnFireCLI extends CommandLineInterface {
     );
     this.itemList = list;
     // const slicedList = filteredList.slice(this.listItemIndex);
-    const slicedList = filteredList.slice(
-      this.displayBuffer.start,
-      this.displayBuffer.end
-    );
+    const slicedList = this.getItemsToDisplay(filteredList);
 
     for (let i = 0; i < this.itemList.length; i++) {
       const command = this.itemList[i];
@@ -265,6 +278,7 @@ export class OnFireCLI extends CommandLineInterface {
   private renderOptionValues() {
     const { base } = this.getCommandParams(this.input);
     this.clearTerminalDownward();
+    // TODO: Handle option input and multiple option input
     console.log("");
     const typedFlag = this.getTypedFlag();
     const msg = `${this.textBold(
@@ -280,10 +294,7 @@ export class OnFireCLI extends CommandLineInterface {
     );
     this.itemList = list;
     // const slicedList = filteredList.slice(this.listItemIndex);
-    const slicedList = filteredList.slice(
-      this.displayBuffer.start,
-      this.displayBuffer.end
-    );
+    const slicedList = this.getItemsToDisplay(filteredList);
 
     for (let i = 0; i < this.itemList.length; i++) {
       const command = this.itemList[i];
@@ -534,11 +545,8 @@ export class OnFireCLI extends CommandLineInterface {
     }
 
     // Handle commands args
-    console.log(this.firebaseCommands[base].args);
     const cmdArgConfig = this.firebaseCommands[base].args;
     const argFlags = Object.keys(cmdArgConfig);
-    console.log(argFlags);
-    console.log(input);
     for (let i = 0; i < argFlags.length; i++) {
       if (input[i] === undefined) continue; // In case user does not input a command argument
       const argFlag = argFlags[i];
@@ -590,7 +598,6 @@ export class OnFireCLI extends CommandLineInterface {
       console.log("options:", options);
       console.log("input:", input);
       this.updateSavedInput();
-      this.cancelPendingRenders = false;
       process.stdout.cursorTo(0);
       console.log(this.savedInput);
       process.stdin.setRawMode(true);
@@ -624,7 +631,6 @@ export class OnFireCLI extends CommandLineInterface {
       );
 
       this.firebaseSpawn.on("spawn", () => {
-        this.cancelPendingRenders = true;
         process.stdout.cursorTo(0);
         process.stdin.setRawMode(false);
       });
@@ -633,7 +639,6 @@ export class OnFireCLI extends CommandLineInterface {
         if (code === 0) {
           this.updateSavedInput();
         }
-        this.cancelPendingRenders = false;
         process.stdout.cursorTo(0);
         const exitMessage =
           code === 0

@@ -1,6 +1,6 @@
 import { CommandLineInterface } from "../src/cli";
 
-class MockCommandLineInterface extends CommandLineInterface {
+export class MockCommandLineInterface extends CommandLineInterface {
   _getCommandParams(
     command: string,
     options?: string[]
@@ -24,6 +24,10 @@ class MockCommandLineInterface extends CommandLineInterface {
 
   _textYellow(str: string): string {
     return this.textYellow(str);
+  }
+
+  _textCyan(str: string): string {
+    return this.textCyan(str);
   }
 
   _textBold(str: string): string {
@@ -52,6 +56,11 @@ describe("Text formatting", () => {
   it("Should make the text yellow", () => {
     const wrappedText = cli._textYellow(text);
     expect(wrappedText).toBe(`\x1b[33m${text}\x1b[0m`);
+  });
+
+  it("Should make the text cyan", () => {
+    const wrappedText = cli._textCyan(text);
+    expect(wrappedText).toBe(`\x1b[36m${text}\x1b[0m`);
   });
 
   it("Should make the text bold", () => {
