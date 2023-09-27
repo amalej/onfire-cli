@@ -16,7 +16,11 @@ function stringify(obj) {
 }
 
 process.on('message', function (path) {
-    const client = require(path); // Load the Firebase Tools module
-    const configStr = stringify(client) // Removes circular reference and convert to string
-    process.send(configStr); // Send to main process
+    try {
+        const client = require(path); // Load the Firebase Tools module
+        const configStr = stringify(client) // Removes circular reference and convert to string
+        process.send(configStr); // Send to main process
+    } catch (_) {
+        process.send('ENOENT'); // Send to main process
+    }
 });
