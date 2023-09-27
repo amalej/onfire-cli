@@ -14,8 +14,11 @@ https://github.com/amalej/onfire-cli/assets/78371908/d0a11ee2-cfad-4cbc-87a8-b68
 
 ## Features
 
-- Tab completion for Firebase CLI commands
-- Option flag autocompletion
-- Option value autocompletion for values recently passed
-  - Values of flags are cached locally
-- Usage and option description message
+- Tab completion for Firebase CLI commands, options, and option values
+- Option autocompletion
+  - Provides a dropdown list of available options for a command
+- Command and input local caching
+  - Saves previously passed commands and input and provide them as autocomplete values
+- Usage and description message
+- Partial matching of commands
+  - Matches input to closest possble command. Helpful when making spelling errors
