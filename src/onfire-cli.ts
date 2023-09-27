@@ -116,6 +116,22 @@ export class OnFireCLI extends CommandLineInterface {
     return itemList.slice(this.displayBuffer.start, this.displayBuffer.end);
   }
 
+  protected sortItemList(list: string[], reference: string) {
+    return list.sort((a, b) =>
+      a.startsWith(reference)
+        ? b.startsWith(reference)
+          ? 0
+          : -1
+        : a.includes(reference)
+        ? b.includes(reference)
+          ? 0
+          : -1
+        : !b.includes(reference)
+        ? 0
+        : 1
+    );
+  }
+
   protected getPastCommandsToRender(): string[] {
     const renderMessage = [];
     const list = this.savedInput.pastCommands || [];
@@ -132,8 +148,6 @@ export class OnFireCLI extends CommandLineInterface {
               )}`
             : `  ${this.textBold(command)}`;
         renderMessage.push(`${msg}\x1b[K`);
-      } else {
-        renderMessage.push(`-\x1b[K`);
       }
     }
     return renderMessage;
@@ -144,8 +158,10 @@ export class OnFireCLI extends CommandLineInterface {
     const { base } = this.getCommandParams(this.input);
     const list = Object.keys(this.firebaseCommands);
 
-    const filteredList = list.filter((command: string) =>
-      command.startsWith(base)
+    const regExp = new RegExp(`${base.split("").join(".*")}`);
+    const filteredList = this.sortItemList(
+      list.filter((command: string) => command.match(regExp)),
+      base
     );
 
     this.itemList = filteredList;
@@ -164,8 +180,6 @@ export class OnFireCLI extends CommandLineInterface {
               )} ${this.textGreen(cmdLabel)}`
             : `  ${this.textBold(command)} ${cmdLabel}`;
         renderMessage.push(`${msg}\x1b[K`);
-      } else {
-        renderMessage.push(`-\x1b[K`);
       }
     }
     return renderMessage;
@@ -178,11 +192,16 @@ export class OnFireCLI extends CommandLineInterface {
     const _options = this.firebaseCommands[base].options || {};
     const list = Object.keys(_options);
     const argList = Object.keys(args);
-    const filteredList = list.filter(
-      (_option) =>
-        _option.startsWith(typedWord.word) &&
-        ((!argList.includes(_option) && !options.includes(_option)) ||
-          _option === typedWord.word)
+
+    const regExp = new RegExp(`${typedWord.word.split("").join(".*")}`);
+    const filteredList = this.sortItemList(
+      list.filter(
+        (_option) =>
+          _option.match(regExp) &&
+          ((!argList.includes(_option) && !options.includes(_option)) ||
+            _option === typedWord.word)
+      ),
+      typedWord.word
     );
     this.itemList = filteredList;
 
@@ -202,8 +221,6 @@ export class OnFireCLI extends CommandLineInterface {
               )} ${this.textGreen(optDescription)}`
             : `  ${this.textBold(optString)} ${optDescription}`;
         renderMessage.push(`${msg}\x1b[K`);
-      } else {
-        renderMessage.push(`-\x1b[K`);
       }
     }
     return renderMessage;
@@ -254,7 +271,7 @@ export class OnFireCLI extends CommandLineInterface {
     const filteredList = list.filter((argVal: string) =>
       argVal.startsWith(typedWord.word)
     );
-    this.itemList = list;
+    this.itemList = filteredList;
     // const slicedList = filteredList.slice(this.listItemIndex);
     const slicedList = this.getItemsToDisplay(filteredList);
 
@@ -292,7 +309,7 @@ export class OnFireCLI extends CommandLineInterface {
     const filteredList = list.filter((argVal: string) =>
       argVal.startsWith(typedWord.word.replace(/--.*=/g, ""))
     );
-    this.itemList = list;
+    this.itemList = filteredList;
     // const slicedList = filteredList.slice(this.listItemIndex);
     const slicedList = this.getItemsToDisplay(filteredList);
 
@@ -393,39 +410,28 @@ export class OnFireCLI extends CommandLineInterface {
       ) {
         this.renderCommandArgs();
       } else {
+        this.itemList = [];
         this.renderCommandInfo();
       }
     } else {
+      this.itemList = [];
       this.clearTerminalDownward();
     }
     this.moveCursorToSavedCurrentPos();
   }
 
-  private handleTabCompletion() {
-    const { args, options } = this.getCommandParams(this.input);
-
+  protected handleTabCompletion() {
     const typedWord = this.getTypedWord();
-    const list = this.itemList;
-    const argList = Object.keys(args);
-    const filteredList = list.filter(
-      (_option) =>
-        _option.startsWith(typedWord.word) &&
-        ((!argList.includes(_option) && !options.includes(_option)) ||
-          _option === typedWord.word)
-    );
-
-    this.itemList = filteredList;
-    const slicedList = filteredList.slice(this.listItemIndex);
-    if (slicedList[0] !== undefined) {
+    if (this.itemList[this.listItemIndex] !== undefined) {
       const xPos = this.currentCursorPos.x - this.prefix.length;
       this.shiftCursorPosition(-(xPos - typedWord.start));
       process.stdout.write(
-        `${slicedList[0]}${this.input.slice(typedWord.end)}`
+        `${this.itemList[this.listItemIndex]}${this.input.slice(typedWord.end)}`
       );
       this.input = `${this.input.slice(0, typedWord.start)}${
-        slicedList[0]
+        this.itemList[this.listItemIndex]
       }${this.input.slice(typedWord.end)}`;
-      this.shiftCursorPosition(slicedList[0].length);
+      this.shiftCursorPosition(this.itemList[this.listItemIndex].length);
       this.listItemIndex = 0;
     }
   }

@@ -410,7 +410,6 @@ describe("Test getting rendering list", () => {
 
     it("Should show that the unselected past command in index [1] is 'appdistribution:distribute --app=1:1234567890:ios:321abc456def7890'", () => {
       const renderMessage = onfireCLI._getPastCommandsToRender();
-      console.log(renderMessage);
       expect(renderMessage[1]).toEqual(
         `  ${cli._textBold(
           "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890"
@@ -475,6 +474,38 @@ describe("Test getting rendering list", () => {
       const cmdLabel = `-> release notes to include`;
       expect(renderMessage[1]).toEqual(
         `  ${cli._textBold("--release-notes <string>")} ${cmdLabel}\x1b[K`
+      );
+    });
+  });
+
+  describe("Test partial matching", () => {
+    beforeAll(() => {
+      const command = "emss";
+      onfireCLI._setInput(command);
+      onfireCLI._setCursorPosition(onfireCLI.prefix.length + command.length);
+    });
+
+    it("Should show that there are 5 options to render", () => {
+      const renderMessage = onfireCLI._getCommandsToRender();
+      expect(renderMessage.length).toEqual(5);
+    });
+
+    it("Should show that the selected option in index [0] is 'emulators:start -> start the local Firebase emulators'", () => {
+      const renderMessage = onfireCLI._getCommandsToRender();
+      const cmdLabel = `-> start the local Firebase emulators`;
+      expect(renderMessage[0]).toEqual(
+        `${cli._textCyan(cli._textBold(">"))} ${cli._textGreen(
+          cli._textBold("emulators:start")
+        )} ${cli._textGreen(cmdLabel)}\x1b[K`
+      );
+    });
+
+    it("Should show that the unselected option in index [1] is 'experimental:functions:shell -> launch full Node shell with emulated functions. (Alias for `firebase functions:shell.)'", () => {
+      const renderMessage = onfireCLI._getCommandsToRender();
+      const cmdLabel =
+        "-> launch full Node shell with emulated functions. (Alias for `firebase functions:shell.)";
+      expect(renderMessage[1]).toEqual(
+        `  ${cli._textBold("experimental:functions:shell")} ${cmdLabel}\x1b[K`
       );
     });
   });

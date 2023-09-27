@@ -111,6 +111,11 @@ export class FirebaseCommands {
             });
 
             child.on("exit", () => {
+              if (childBufferString === "ENOENT") {
+                throw new Error(
+                  `Firebase Tools module not found. Install using 'npm install -g firebase-tools'`
+                );
+              }
               res(JSON.parse(childBufferString));
             });
 
@@ -121,13 +126,11 @@ export class FirebaseCommands {
           resolve(childResponse);
         } catch (error) {
           if (error.code === "MODULE_NOT_FOUND") {
-            reject(
-              new Error(
-                `Firebase Tools module not found. Install using 'npm install -g firebase-tools'`
-              )
+            throw new Error(
+              `Firebase Tools module not found. Install using 'npm install -g firebase-tools'`
             );
           } else {
-            new Error(`Unexpected error was raised. ${error.message}`);
+            throw new Error(`Unexpected error was raised. ${error.message}`);
           }
         }
       });
