@@ -1,7 +1,7 @@
 import { OnFireCLI } from "../src/onfire-cli";
 import { MockCommandLineInterface } from "./cli.test";
 
-interface SavedInput {
+interface SavedConfig {
   pastCommands?: string[] | undefined;
   [key: string]: any;
 }
@@ -43,16 +43,16 @@ class MockOnFireCLI extends OnFireCLI {
     return this.getTypedFlag();
   }
 
-  _updateSavedInput(): void {
-    return this.updateSavedInput();
+  _updateSavedConfig(): void {
+    return this.updateSavedConfig();
   }
 
-  _getSavedInput(): SavedInput {
-    return this.getSavedInput();
+  _getSavedConfig(): SavedConfig {
+    return this.getSavedConfig();
   }
 
-  _setSavedInput(obj: Object): void {
-    return this.setSavedInput(obj);
+  _setSavedConfig(obj: Object): void {
+    return this.setSavedConfig(obj);
   }
 
   _getPastCommandsToRender(): string[] {
@@ -66,6 +66,10 @@ class MockOnFireCLI extends OnFireCLI {
   _getCommandOptionsToRender(): string[] {
     return this.getCommandOptionsToRender();
   }
+
+  _getFirebaseCommands() {
+    return this.getFirebaseCommands();
+  }
 }
 
 const appdistribution = {
@@ -75,6 +79,39 @@ const appdistribution = {
     removeLen: 5,
   },
 };
+
+describe("Test loading of Firebase commands", () => {
+  const onfireCLI = new MockOnFireCLI();
+  beforeAll(async () => {
+    await onfireCLI._loadFirebaseCommands();
+  });
+
+  it("Should load Firebase commands", async () => {
+    const firebaseCommands = onfireCLI._getFirebaseCommands();
+    expect(firebaseCommands).toBeDefined();
+  });
+
+  it("Should load 'appdistribution:distribute' command", async () => {
+    const firebaseCommands = onfireCLI._getFirebaseCommands();
+    expect(firebaseCommands["appdistribution:distribute"].description).toEqual(
+      "upload a release binary"
+    );
+  });
+
+  it("Should load 'appdistribution:testers:add' command", async () => {
+    const firebaseCommands = onfireCLI._getFirebaseCommands();
+    expect(firebaseCommands["appdistribution:testers:add"].description).toEqual(
+      "add testers to project (and possibly group)"
+    );
+  });
+
+  it("Should load 'appdistribution:testers:remove' command", async () => {
+    const firebaseCommands = onfireCLI._getFirebaseCommands();
+    expect(
+      firebaseCommands["appdistribution:testers:remove"].description
+    ).toEqual("remove testers from a project (or group)");
+  });
+});
 
 describe("Run simple commands", () => {
   const onfireCLI = new MockOnFireCLI();
@@ -317,18 +354,20 @@ describe("Update the saved inputs", () => {
     onfireCLI._setInput(
       "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890"
     );
-    onfireCLI._updateSavedInput();
-    const savedInput = onfireCLI._getSavedInput();
-    expect(savedInput["--app"][0]).toEqual("1:1234567890:ios:321abc456def7890");
+    onfireCLI._updateSavedConfig();
+    const savedConfig = onfireCLI._getSavedConfig();
+    expect(savedConfig["--app"][0]).toEqual(
+      "1:1234567890:ios:321abc456def7890"
+    );
   });
 
   it("Should show that --project input saved value is 'demo-proj'", () => {
     onfireCLI._setInput(
       "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890 --project demo-proj"
     );
-    onfireCLI._updateSavedInput();
-    const savedInput = onfireCLI._getSavedInput();
-    expect(savedInput["--project"][0]).toEqual("demo-proj");
+    onfireCLI._updateSavedConfig();
+    const savedConfig = onfireCLI._getSavedConfig();
+    expect(savedConfig["--project"][0]).toEqual("demo-proj");
   });
 
   it("Should show that --project input saved value is 'demo-project', 'demo-proj'", () => {
@@ -336,30 +375,30 @@ describe("Update the saved inputs", () => {
     onfireCLI._setInput(
       "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890 --project demo-proj"
     );
-    onfireCLI._updateSavedInput();
+    onfireCLI._updateSavedConfig();
     // Second input
     onfireCLI._setInput(
       "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890 --project demo-project"
     );
-    onfireCLI._updateSavedInput();
-    const savedInput = onfireCLI._getSavedInput();
-    expect(savedInput["--project"]).toEqual(["demo-project", "demo-proj"]);
+    onfireCLI._updateSavedConfig();
+    const savedConfig = onfireCLI._getSavedConfig();
+    expect(savedConfig["--project"]).toEqual(["demo-project", "demo-proj"]);
   });
 
   it("Should show that 'feature' input saved value is 'functions'", () => {
     onfireCLI._setInput("init functions --project demo-project");
-    onfireCLI._updateSavedInput();
-    const savedInput = onfireCLI._getSavedInput();
-    expect(savedInput["--project"][0]).toEqual("demo-project");
-    expect(savedInput["feature"][0]).toEqual("functions");
+    onfireCLI._updateSavedConfig();
+    const savedConfig = onfireCLI._getSavedConfig();
+    expect(savedConfig["--project"][0]).toEqual("demo-project");
+    expect(savedConfig["feature"][0]).toEqual("functions");
   });
 
   it("Should show that 'feature' input saved value is list 'functions,firestore'", () => {
     onfireCLI._setInput("init functions,firestore --project demo-project");
-    onfireCLI._updateSavedInput();
-    const savedInput = onfireCLI._getSavedInput();
-    expect(savedInput["--project"][0]).toEqual("demo-project");
-    expect(savedInput["feature"]).toEqual([
+    onfireCLI._updateSavedConfig();
+    const savedConfig = onfireCLI._getSavedConfig();
+    expect(savedConfig["--project"][0]).toEqual("demo-project");
+    expect(savedConfig["feature"]).toEqual([
       "functions,firestore",
       "functions",
       "firestore",
@@ -367,7 +406,7 @@ describe("Update the saved inputs", () => {
   });
 
   afterEach(() => {
-    onfireCLI._setSavedInput({}); // Reset the saved input for each test
+    onfireCLI._setSavedConfig({}); // Reset the saved input for each test
   });
 });
 
@@ -384,11 +423,11 @@ describe("Test getting rendering list", () => {
       onfireCLI._setInput(
         "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890"
       );
-      onfireCLI._updateSavedInput();
+      onfireCLI._updateSavedConfig();
       onfireCLI._setInput(
         "emulators:start --project demo-project-4 --debug --only functions"
       );
-      onfireCLI._updateSavedInput();
+      onfireCLI._updateSavedConfig();
     });
 
     it("Should show that there a 2 past commands", () => {
@@ -398,7 +437,6 @@ describe("Test getting rendering list", () => {
 
     it("Should show that the selected past command in index [0] is 'emulators:start --project demo-project-4 --debug --only functions'", () => {
       const renderMessage = onfireCLI._getPastCommandsToRender();
-      console.log(renderMessage);
       expect(renderMessage[0]).toEqual(
         `${cli._textCyan(cli._textBold(">"))} ${cli._textGreen(
           cli._textBold(
