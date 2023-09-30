@@ -59,7 +59,15 @@ export class CliCache {
     const filePath = path.join(dirPath, `cache${additionalPath}.json`);
 
     try {
-      await writeFile(filePath, JSON.stringify(obj, null, 4));
+      let objToSave = obj;
+      // Move the 'firebaseCommands' key to the last index
+      if (objToSave["firebaseCommands"] !== undefined) {
+        objToSave = Object.fromEntries(
+          Object.entries(obj).filter(([key]) => key !== "firebaseCommands")
+        );
+        objToSave["firebaseCommands"] = obj["firebaseCommands"];
+      }
+      await writeFile(filePath, JSON.stringify(objToSave, null, 4));
       return;
     } catch (err) {
       throw new Error(`Unknown error occured: ${err.message}`);
