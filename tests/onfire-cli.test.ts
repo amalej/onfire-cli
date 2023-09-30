@@ -111,6 +111,11 @@ describe("Test loading of Firebase commands", () => {
       firebaseCommands["appdistribution:testers:remove"].description
     ).toEqual("remove testers from a project (or group)");
   });
+
+  it("Should load 'exit' command", async () => {
+    const firebaseCommands = onfireCLI._getFirebaseCommands();
+    expect(firebaseCommands["exit"].description).toEqual("Exit the OnFire CLI");
+  });
 });
 
 describe("Run simple commands", () => {
