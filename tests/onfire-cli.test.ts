@@ -553,3 +553,109 @@ describe("Test getting rendering list", () => {
     });
   });
 });
+
+describe("Test updating of saved config", () => {
+  describe("Last command ran should be on top of list 'emulators:start --project demo-project --debug --only functions'", () => {
+    const onfireCLI = new MockOnFireCLI();
+    const cli = new MockCommandLineInterface();
+    beforeAll(async () => {
+      await onfireCLI._loadFirebaseCommands();
+
+      onfireCLI._setInput(
+        "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890"
+      );
+      onfireCLI._updateSavedConfig();
+      onfireCLI._setInput(
+        "emulators:start --project demo-project-4 --debug --only functions"
+      );
+      onfireCLI._updateSavedConfig();
+    });
+
+    it("Should show that there a 2 past commands", () => {
+      const renderMessage = onfireCLI._getPastCommandsToRender();
+      expect(renderMessage.length).toEqual(2);
+    });
+
+    it("Should show that the selected past command in index [0] is 'emulators:start --project demo-project --debug --only functions'", () => {
+      onfireCLI._setInput(
+        "emulators:start --project demo-project --debug --only functions"
+      );
+      onfireCLI._updateSavedConfig();
+      const renderMessage = onfireCLI._getPastCommandsToRender();
+      expect(renderMessage[0]).toEqual(
+        `${cli._textCyan(cli._textBold(">"))} ${cli._textGreen(
+          cli._textBold(
+            "emulators:start --project demo-project --debug --only functions"
+          )
+        )}\x1b[K`
+      );
+    });
+
+    it("Should show that the selected past command in index [1] is 'emulators:start --project demo-project-4 --debug --only functions'", () => {
+      const renderMessage = onfireCLI._getPastCommandsToRender();
+      expect(renderMessage[1]).toEqual(
+        `  ${cli._textBold(
+          "emulators:start --project demo-project-4 --debug --only functions"
+        )}\x1b[K`
+      );
+    });
+
+    it("Should show that the selected past command in index [2] is 'appdistribution:distribute --app=1:1234567890:ios:321abc456def7890'", () => {
+      const renderMessage = onfireCLI._getPastCommandsToRender();
+      expect(renderMessage[2]).toEqual(
+        `  ${cli._textBold(
+          "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890"
+        )}\x1b[K`
+      );
+    });
+  });
+
+  describe("Last command ran should moved to top of list 'emulators:start --project demo-project --debug --only functions'", () => {
+    const onfireCLI = new MockOnFireCLI();
+    const cli = new MockCommandLineInterface();
+    beforeAll(async () => {
+      await onfireCLI._loadFirebaseCommands();
+
+      onfireCLI._setInput(
+        "emulators:start --project demo-project --debug --only functions"
+      );
+      onfireCLI._updateSavedConfig();
+      onfireCLI._setInput(
+        "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890"
+      );
+      onfireCLI._updateSavedConfig();
+    });
+
+    it("Should show that there a 2 past commands", () => {
+      const renderMessage = onfireCLI._getPastCommandsToRender();
+      expect(renderMessage.length).toEqual(2);
+      expect(renderMessage[0]).toEqual(
+        `${cli._textCyan(cli._textBold(">"))} ${cli._textGreen(
+          cli._textBold(
+            "appdistribution:distribute --app=1:1234567890:ios:321abc456def7890"
+          )
+        )}\x1b[K`
+      );
+      expect(renderMessage[1]).toEqual(
+        `  ${cli._textBold(
+          "emulators:start --project demo-project --debug --only functions"
+        )}\x1b[K`
+      );
+    });
+
+    it("Should show that the selected past command in index [0] is 'emulators:start --project demo-project --debug --only functions'", () => {
+      onfireCLI._setInput(
+        "emulators:start --project demo-project --debug --only functions"
+      );
+      onfireCLI._updateSavedConfig();
+      const renderMessage = onfireCLI._getPastCommandsToRender();
+      expect(renderMessage[0]).toEqual(
+        `${cli._textCyan(cli._textBold(">"))} ${cli._textGreen(
+          cli._textBold(
+            "emulators:start --project demo-project --debug --only functions"
+          )
+        )}\x1b[K`
+      );
+    });
+  });
+});
