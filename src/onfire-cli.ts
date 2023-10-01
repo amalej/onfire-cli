@@ -275,10 +275,12 @@ export class OnFireCLI extends CommandLineInterface {
     const { base, input } = this.getCommandParams(this.input);
     this.clearTerminalDownward();
     // TODO: Handle args input and multiple args input
-    const argName = Object.keys(this.firebaseCommands[base].args)[input.length];
+    const typedWord = this.getTypedWord();
+    const inputIndexShift = typedWord.word === "" ? 0 : 1;
+    const inputIndex = input.length - inputIndexShift;
+    const argName = Object.keys(this.firebaseCommands[base].args)[inputIndex];
     this.renderCommandInfo({ highlight: argName });
     const list = this.savedConfig[argName] || [];
-    const typedWord = this.getTypedWord();
 
     const filteredList = list.filter((argVal: string) =>
       argVal.startsWith(typedWord.word)
@@ -414,13 +416,15 @@ export class OnFireCLI extends CommandLineInterface {
         this.renderOptionValues();
       } else if (typedWord.word.startsWith("-")) {
         this.renderCommandOptions();
-      } else if (
-        Object.keys(this.firebaseCommands[base].args).length > input.length
-      ) {
-        this.renderCommandArgs();
+        // }
+        // else if (
+        //   Object.keys(this.firebaseCommands[base].args).length > input.length
+        // ) {
+        //   this.renderCommandArgs();
       } else {
-        this.itemList = [];
-        this.renderCommandInfo();
+        // this.itemList = [];
+        // this.renderCommandInfo();
+        this.renderCommandArgs();
       }
     } else {
       this.itemList = [];
