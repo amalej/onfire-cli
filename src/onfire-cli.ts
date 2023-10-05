@@ -1,5 +1,5 @@
 import readline from "readline";
-import { FirebaseCommands } from "./firebase-cmd";
+import { DEFAULT_FEATURES, FirebaseCommands } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
 import { ChildProcess } from "child_process";
 import { CliCache, MAX_CACHE_COUNT } from "./cli-cache";
@@ -60,6 +60,18 @@ export class OnFireCLI extends CommandLineInterface {
     });
     this.firebaseCli = new FirebaseCommands();
     this.savedConfig = savedConfig;
+    // Modify the `init` inputs
+    const features: string[] = this.savedConfig["feature"] || [];
+    const missingDefaultFeatures = DEFAULT_FEATURES.filter(
+      (feature) => !features.includes(feature)
+    );
+    features.splice(MAX_CACHE_COUNT - missingDefaultFeatures.length);
+    for (let feature of missingDefaultFeatures) {
+      if (!features.includes(feature)) {
+        features.push(feature);
+      }
+    }
+    this.savedConfig["feature"] = features;
   }
 
   protected getSavedConfig() {
@@ -745,7 +757,7 @@ export class OnFireCLI extends CommandLineInterface {
       };
       this.createTerminalBuffer();
       this.clearTerminalDownward();
-      this.runCommand({ debugging: false }); // TODO: Set to true for debugging mode. Implement a better way to debug
+      this.runCommand({ debugging: true }); // TODO: Set to true for debugging mode. Implement a better way to debug
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
         this.listItemIndex -= 1;
