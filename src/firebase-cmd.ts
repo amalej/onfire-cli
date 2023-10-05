@@ -1,22 +1,20 @@
 import { ChildProcess, SpawnOptions, exec, fork } from "child_process";
 import spawn from "cross-spawn";
 
-interface CommandConfiguration {
-  command: string;
-  description: string;
-}
-
-interface OptionConfiguration {
-  option: string;
-  hint: string;
-  description: string;
-}
-
-interface SpawnError extends Error {
-  code?: string;
-}
-
 const COMMAND_TIMEOUT = 10000;
+
+export const DEFAULT_FEATURES = [
+  "database",
+  "emulators",
+  "extensions",
+  "firestore",
+  "frameworks",
+  "functions",
+  "hosting",
+  "hosting:github",
+  "remoteconfig",
+  "storage",
+];
 
 interface FirebaseCommandArgs {
   required: boolean;

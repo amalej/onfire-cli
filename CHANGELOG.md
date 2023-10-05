@@ -1,6 +1,7 @@
 <!-- ADD CHANGES HERE -->
 
-- Fix issue where argument selection does not shown possible values(#45)
+- Fixed issue where argument selection does not shown possible values(#45)
+- Added possible values for `feature`(#15)
 
 v1.2.3
 
