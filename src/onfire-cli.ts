@@ -62,8 +62,11 @@ export class OnFireCLI extends CommandLineInterface {
     this.savedConfig = savedConfig;
     // Modify the `init` inputs
     const features: string[] = this.savedConfig["feature"] || [];
-    features.splice(MAX_CACHE_COUNT - DEFAULT_FEATURES.length);
-    for (let feature of DEFAULT_FEATURES) {
+    const missingDefaultFeatures = DEFAULT_FEATURES.filter(
+      (feature) => !features.includes(feature)
+    );
+    features.splice(MAX_CACHE_COUNT - missingDefaultFeatures.length);
+    for (let feature of missingDefaultFeatures) {
       if (!features.includes(feature)) {
         features.push(feature);
       }
