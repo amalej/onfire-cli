@@ -104,7 +104,7 @@ export class OnFireCLI extends CommandLineInterface {
   }
 
   /**
-   * Get a string array of flags that do not expect an argument
+   * Get a string array of flags that expects an argument
    * @returns An array of string
    */
   protected getCurrentCommandNonNullableOptions(): string[] {
@@ -357,14 +357,14 @@ export class OnFireCLI extends CommandLineInterface {
   private renderCommandInfo({ highlight }: { highlight?: string } = {}) {
     this.clearTerminalDownward();
     console.log("");
-    const { base, options } = this.getCommandParams(this.input);
-    const _options = this.firebaseCommands[base].options || {};
-    const list = Object.keys(_options);
+    const { base, args, options } = this.getCommandParams(this.input);
+    const _nonNullOptions = this.getCurrentCommandNonNullableOptions();
+    const flags = [...Object.keys(args), ...options];
     const missingArgs: Array<CommandOptionsConfig> = [];
     const cmdConfig = this.firebaseCommands[base];
-    for (let option of list) {
-      if (_options[option].hint !== null && options.includes(option)) {
-        missingArgs.push(_options[option]);
+    for (let flag of flags) {
+      if (_nonNullOptions.includes(flag) && args[flag] === undefined) {
+        missingArgs.push(cmdConfig.options[flag]);
       }
     }
 
