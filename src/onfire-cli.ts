@@ -1,7 +1,7 @@
 import readline from "readline";
 import { DEFAULT_FEATURES, FirebaseCommands } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
-import { ChildProcess } from "child_process";
+import { ChildProcess, exec, execSync } from "child_process";
 import { CliCache, MAX_CACHE_COUNT } from "./cli-cache";
 
 interface CommandConfig {
@@ -600,13 +600,52 @@ export class OnFireCLI extends CommandLineInterface {
   private async runCommand({
     debugging = false,
   }: { debugging?: boolean } = {}) {
-    const { base } = this.getCommandParams(this.input);
+    const { base, input } = this.getCommandParams(this.input);
     if (base === "exit" || base === "stopdropandroll") {
       await this.handleExit();
       return;
     }
     this.clearTerminalDownward();
     console.log(`\x1b[K`);
+
+    // Handle non Firebase commands
+    if (this.firebaseCommands[base] === undefined) {
+      try {
+        const result = execSync(this.input);
+        if (base === "cd") {
+          const path = input[0] || ".";
+          process.chdir(path);
+          console.log(`${process.cwd()}`);
+        } else if (base === "clear" || base === "cls") {
+          console.clear();
+        } else {
+          console.log(`${result}`);
+        }
+      } catch (error) {
+        console.error(error.message);
+      }
+
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+
+      this.createTerminalBuffer();
+      this.originalCursorPos = await this.getCursorPosition();
+      // Shift the cursor position
+      this.originalCursorPos = {
+        x: this.originalCursorPos.x - 1,
+        y: this.originalCursorPos.y - 1,
+      };
+      this.currentCursorPos = { ...this.originalCursorPos };
+      process.stdin.setRawMode(true);
+      process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
+      this.shiftCursorPosition(this.prefix.length);
+
+      this.input = "";
+      this.moveCursorToInputStart();
+      this.renderIO();
+      this.firebaseSpawn = null;
+      return;
+    }
 
     if (debugging) {
       const _options = this.getCurrentCommandNullableOptions();
@@ -645,7 +684,6 @@ export class OnFireCLI extends CommandLineInterface {
       this.renderIO();
     } else {
       process.stdin.pause();
-
       const spawnCommands = this.input.trim().split(" ");
       this.firebaseSpawn = FirebaseCommands.runCommand(
         "firebase",
