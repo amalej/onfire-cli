@@ -601,6 +601,7 @@ export class OnFireCLI extends CommandLineInterface {
     debugging = false,
   }: { debugging?: boolean } = {}) {
     const { base, input } = this.getCommandParams(this.input);
+
     if (base === "exit" || base === "stopdropandroll") {
       await this.handleExit();
       return;
@@ -610,21 +611,28 @@ export class OnFireCLI extends CommandLineInterface {
 
     // Handle non Firebase commands
     if (this.firebaseCommands[base] === undefined) {
-      try {
-        const result = execSync(this.input);
-        if (base === "cd") {
-          const path = input[0] || ".";
-          process.chdir(path);
-          console.log(`${process.cwd()}`);
-        } else if (base === "clear" || base === "cls") {
-          console.clear();
-        } else if (base === "pwd" || base === "cwd") {
-          console.log(`${process.cwd()}`);
-        } else {
-          console.log(`${result}`);
+      if (this.input.trim() !== "") {
+        try {
+          // Added few commands due to personal preference
+          if (base === "cd") {
+            const path = input[0] || ".";
+            process.chdir(path);
+          } else if (base === "clear" || base === "cls") {
+            console.clear();
+          } else if (base === "pwd" || base === "cwd") {
+            console.log(`${process.cwd()}`);
+          } else if (base === "clear" || base === "cls") {
+            console.clear();
+          } else {
+            // TODO: Might be a good idea to use spawn instead?
+            execSync(this.input, { stdio: "inherit" });
+          }
+        } catch (error) {
+          console.log(
+            this.textBold(this.textRed("Error:")),
+            error.stderr.toString()
+          );
         }
-      } catch (error) {
-        console.error(error.message);
       }
 
       process.stdin.setRawMode(true);
@@ -794,7 +802,7 @@ export class OnFireCLI extends CommandLineInterface {
       };
       this.createTerminalBuffer();
       this.clearTerminalDownward();
-      this.runCommand({ debugging: true }); // TODO: Set to true for debugging mode. Implement a better way to debug
+      this.runCommand({ debugging: false }); // TODO: Set to true for debugging mode. Implement a better way to debug
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
         this.listItemIndex -= 1;
