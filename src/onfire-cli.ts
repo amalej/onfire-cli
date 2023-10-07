@@ -428,14 +428,7 @@ export class OnFireCLI extends CommandLineInterface {
         this.renderOptionValues();
       } else if (typedWord.word.startsWith("-")) {
         this.renderCommandOptions();
-        // }
-        // else if (
-        //   Object.keys(this.firebaseCommands[base].args).length > input.length
-        // ) {
-        //   this.renderCommandArgs();
       } else {
-        // this.itemList = [];
-        // this.renderCommandInfo();
         this.renderCommandArgs();
       }
     } else {
