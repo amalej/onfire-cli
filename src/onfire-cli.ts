@@ -1,7 +1,7 @@
 import readline from "readline";
 import { DEFAULT_FEATURES, FirebaseCommands } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
-import { ChildProcess } from "child_process";
+import { ChildProcess, exec, execSync } from "child_process";
 import { CliCache, MAX_CACHE_COUNT } from "./cli-cache";
 
 interface CommandConfig {
@@ -600,13 +600,68 @@ export class OnFireCLI extends CommandLineInterface {
   private async runCommand({
     debugging = false,
   }: { debugging?: boolean } = {}) {
-    const { base } = this.getCommandParams(this.input);
+    const { base, input } = this.getCommandParams(this.input);
+
     if (base === "exit" || base === "stopdropandroll") {
       await this.handleExit();
       return;
     }
     this.clearTerminalDownward();
     console.log(`\x1b[K`);
+
+    // Handle non Firebase commands
+    if (this.firebaseCommands[base] === undefined) {
+      if (this.input.trim() !== "") {
+        try {
+          // Added few commands due to personal preference
+          if (base === "cd") {
+            const path = input[0];
+            if (path === undefined) {
+              console.log(`${process.cwd()}`);
+            } else {
+              execSync(this.input, { stdio: "pipe" });
+              process.chdir(path);
+            }
+          } else if (base === "clear" || base === "cls") {
+            console.clear();
+          } else if (base === "pwd" || base === "cwd") {
+            console.log(`${process.cwd()}`);
+          } else if (base === "clear" || base === "cls") {
+            console.clear();
+          } else {
+            // TODO: Might be a good idea to use spawn instead?
+            execSync(this.input, { stdio: "inherit" });
+          }
+        } catch (error) {
+          const errorMessage = error.stderr || error.message;
+          console.log(
+            this.textBold(this.textRed("Error:")),
+            errorMessage.toString()
+          );
+        }
+      }
+
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+
+      this.createTerminalBuffer();
+      this.originalCursorPos = await this.getCursorPosition();
+      // Shift the cursor position
+      this.originalCursorPos = {
+        x: this.originalCursorPos.x - 1,
+        y: this.originalCursorPos.y - 1,
+      };
+      this.currentCursorPos = { ...this.originalCursorPos };
+      process.stdin.setRawMode(true);
+      process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
+      this.shiftCursorPosition(this.prefix.length);
+
+      this.input = "";
+      this.moveCursorToInputStart();
+      this.renderIO();
+      this.firebaseSpawn = null;
+      return;
+    }
 
     if (debugging) {
       const _options = this.getCurrentCommandNullableOptions();
@@ -645,7 +700,6 @@ export class OnFireCLI extends CommandLineInterface {
       this.renderIO();
     } else {
       process.stdin.pause();
-
       const spawnCommands = this.input.trim().split(" ");
       this.firebaseSpawn = FirebaseCommands.runCommand(
         "firebase",
@@ -754,7 +808,7 @@ export class OnFireCLI extends CommandLineInterface {
       };
       this.createTerminalBuffer();
       this.clearTerminalDownward();
-      this.runCommand({ debugging: true }); // TODO: Set to true for debugging mode. Implement a better way to debug
+      this.runCommand({ debugging: false }); // TODO: Set to true for debugging mode. Implement a better way to debug
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
         this.listItemIndex -= 1;
