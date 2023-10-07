@@ -1,5 +1,7 @@
 <!-- ADD CHANGES HERE -->
 
+v1.3.0
+
 - Fixed issue where argument selection does not shown possible values(#45)
 - Added possible values for `feature`(#15)
 - Fixed issue where argument passed is misarranged(#3)
