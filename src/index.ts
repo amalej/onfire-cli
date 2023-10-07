@@ -7,7 +7,10 @@ import packageJson from "./package-json";
 async function initializeApp() {
   if (process.argv.length <= 2) {
     const fileContent = await CliCache.readFromFile();
-    const cli = new OnFireCLI({ prefix: "> ", savedConfig: fileContent });
+    const cli = new OnFireCLI({
+      prefix: "(OnFire) > ",
+      savedConfig: fileContent,
+    });
     cli.init();
   } else if (process.argv.includes("--version")) {
     console.log(`OnFire: v${packageJson.version}`);
