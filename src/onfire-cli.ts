@@ -618,6 +618,8 @@ export class OnFireCLI extends CommandLineInterface {
           console.log(`${process.cwd()}`);
         } else if (base === "clear" || base === "cls") {
           console.clear();
+        } else if (base === "pwd" || base === "cwd") {
+          console.log(`${process.cwd()}`);
         } else {
           console.log(`${result}`);
         }
