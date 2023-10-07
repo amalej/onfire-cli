@@ -14,6 +14,8 @@ npm install -g onfire-cli
 
 ## Features
 
+- Clear current input by pressing `command + C`
+  - If input is blank, `command + C` will exit the CLI
 - Tab completion for Firebase CLI commands, options, and option values
 - Option autocompletion
   - Provides a dropdown list of available options for a command

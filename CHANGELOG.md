@@ -3,6 +3,8 @@
 - Fixed issue where argument selection does not shown possible values(#45)
 - Added possible values for `feature`(#15)
 - Fixed issue where argument passed is misarranged(#3)
+- Added way to clear commands using SIGNINT signal
+  - When the input is clear and SIGNINT signal is sent, CLI exits
 
 v1.2.3
 
