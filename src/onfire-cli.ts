@@ -602,7 +602,8 @@ export class OnFireCLI extends CommandLineInterface {
   }: { debugging?: boolean } = {}) {
     const { base } = this.getCommandParams(this.input);
     if (base === "exit" || base === "stopdropandroll") {
-      this.handleExit();
+      await this.handleExit();
+      return;
     }
     this.clearTerminalDownward();
     console.log(`\x1b[K`);
@@ -624,7 +625,6 @@ export class OnFireCLI extends CommandLineInterface {
       console.log("input:", input);
       this.updateSavedConfig();
       process.stdout.cursorTo(0);
-      console.log(this.savedConfig);
       process.stdin.setRawMode(true);
       process.stdin.resume();
 
@@ -725,8 +725,12 @@ export class OnFireCLI extends CommandLineInterface {
     const xPos = this.currentCursorPos.x - prefixLen;
 
     if (key.ctrl == true && key.name == "c") {
-      if (this.firebaseSpawn === null) {
+      if (this.firebaseSpawn === null && this.input === "") {
         this.handleExit();
+      } else {
+        render = true;
+        this.input = "";
+        this.moveCursorToInputStart();
       }
     } else if (key.name === "backspace") {
       if (xPos > 0) {
@@ -807,14 +811,14 @@ export class OnFireCLI extends CommandLineInterface {
     this.firebaseCommands["exit"] = {
       description: "Exit the OnFire CLI",
       usage: "exit",
-      options: null,
-      args: null,
+      options: {},
+      args: {},
     };
     this.firebaseCommands["stopdropandroll"] = {
       description: "Exit the OnFire CLI same as 'exit'",
       usage: "stopdropandroll",
-      options: null,
-      args: null,
+      options: {},
+      args: {},
     };
   }
 
