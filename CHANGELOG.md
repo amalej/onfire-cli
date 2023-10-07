@@ -4,7 +4,11 @@
 - Added possible values for `feature`(#15)
 - Fixed issue where argument passed is misarranged(#3)
 - Added way to clear commands using SIGNINT signal
-  - When the input is clear and SIGNINT signal is sent, CLI exits
+  - When input has value and SIGNINT signal is sent, CLI will clear the input
+  - When input is clear and SIGNINT signal is sent, CLI exits
+- Added experimental feature to run non-Firebase commands
+  - `clear` and `cls` to clear the console.
+  - `pwd` and `cwd` to print current working directory.
 
 v1.2.3
 
