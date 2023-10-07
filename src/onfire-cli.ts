@@ -830,11 +830,16 @@ export class OnFireCLI extends CommandLineInterface {
       this.firebaseCommands = await this.firebaseCli.getCommandConfig();
     } else {
       this.firebaseCommands = this.savedConfig["firebaseCommands"];
-      this.firebaseCli.getCommandConfig().then((firebaseCommands) => {
-        this.firebaseCommands = firebaseCommands;
-        this.savedConfig["firebaseCommands"] = this.firebaseCommands;
-        this.attachCustomCommands();
-      });
+      this.firebaseCli
+        .getCommandConfig()
+        .then((firebaseCommands) => {
+          this.firebaseCommands = firebaseCommands;
+          this.savedConfig["firebaseCommands"] = this.firebaseCommands;
+          this.attachCustomCommands();
+        })
+        .catch((_) => {
+          // No action needed since we can use the cached firebaseCommands
+        });
     }
     this.attachCustomCommands();
     this.savedConfig["firebaseCommands"] = this.firebaseCommands;
