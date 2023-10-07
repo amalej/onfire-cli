@@ -615,8 +615,13 @@ export class OnFireCLI extends CommandLineInterface {
         try {
           // Added few commands due to personal preference
           if (base === "cd") {
-            const path = input[0] || ".";
-            process.chdir(path);
+            const path = input[0];
+            if (path === undefined) {
+              console.log(`${process.cwd()}`);
+            } else {
+              execSync(this.input, { stdio: "pipe" });
+              process.chdir(path);
+            }
           } else if (base === "clear" || base === "cls") {
             console.clear();
           } else if (base === "pwd" || base === "cwd") {
@@ -628,9 +633,10 @@ export class OnFireCLI extends CommandLineInterface {
             execSync(this.input, { stdio: "inherit" });
           }
         } catch (error) {
+          const errorMessage = error.stderr || error.message;
           console.log(
             this.textBold(this.textRed("Error:")),
-            error.stderr.toString()
+            errorMessage.toString()
           );
         }
       }
