@@ -1,7 +1,7 @@
 import { ChildProcess, SpawnOptions, exec, fork } from "child_process";
 import spawn from "cross-spawn";
 
-const COMMAND_TIMEOUT = 1000;
+const COMMAND_TIMEOUT = 10000;
 
 export const DEFAULT_FEATURES = [
   "database",
