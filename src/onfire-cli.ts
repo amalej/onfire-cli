@@ -238,12 +238,51 @@ export class OnFireCLI extends CommandLineInterface {
     return renderMessage;
   }
 
+  private displaceText(
+    str: string,
+    firstDisplacement: number = 0,
+    displacement: number = 5
+  ) {
+    const cols: number = process.stdout.columns;
+    const disp: string[] = [];
+    const strArr = str.split(" ");
+
+    let subStrArr: string[] = [];
+    for (let i = 0; i < strArr.length; i++) {
+      subStrArr.push(strArr[i]);
+      const strJoin = subStrArr
+        .join(" ")
+        .replace(
+          /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/gim,
+          ""
+        );
+      const strLen = strJoin.length;
+      const allowance = disp.length === 0 ? firstDisplacement : displacement;
+      if (strLen + allowance >= cols) {
+        subStrArr.pop();
+        if (disp.length === 0) {
+          disp.push(
+            `${" ".repeat(firstDisplacement)}${subStrArr.join(
+              " "
+            )}\n${" ".repeat(displacement)}`
+          );
+        } else {
+          disp.push(`${subStrArr.join(" ")}\n${" ".repeat(displacement)}`);
+        }
+        subStrArr = [];
+        i--;
+      }
+    }
+
+    return disp.join(" ") + subStrArr.join(" ");
+  }
+
   private renderPastCommands() {
     this.clearTerminalDownward();
     console.log("");
     const renderMessage = this.getPastCommandsToRender();
     for (let i = 0; i < renderMessage.length; i++) {
-      console.log(renderMessage[i]);
+      console.log(this.displaceText(renderMessage[i]));
     }
   }
 
@@ -252,7 +291,7 @@ export class OnFireCLI extends CommandLineInterface {
     console.log("");
     const renderMessage = this.getCommandsToRender();
     for (let i = 0; i < renderMessage.length; i++) {
-      console.log(renderMessage[i]);
+      console.log(this.displaceText(renderMessage[i]));
     }
   }
 
@@ -264,7 +303,7 @@ export class OnFireCLI extends CommandLineInterface {
     if (cmdConfig !== undefined) {
       const renderMessage = this.getCommandOptionsToRender();
       for (let i = 0; i < renderMessage.length; i++) {
-        console.log(renderMessage[i]);
+        console.log(this.displaceText(renderMessage[i]));
       }
     } else {
       console.log(`${this.textBold(this.textRed("Error:"))} Command not found`);
@@ -300,7 +339,7 @@ export class OnFireCLI extends CommandLineInterface {
                 this.textBold(command)
               )}`
             : `  ${this.textBold(command)}`;
-        console.log(`${msg}\x1b[K`);
+        console.log(this.displaceText(`${msg}\x1b[K`));
       } else {
         console.log(`-\x1b[K`);
       }
@@ -337,7 +376,7 @@ export class OnFireCLI extends CommandLineInterface {
                 this.textBold(command)
               )}`
             : `  ${this.textBold(command)}`;
-        console.log(`${msg}\x1b[K`);
+        console.log(this.displaceText(`${msg}\x1b[K`));
       } else {
         console.log(`-\x1b[K`);
       }
@@ -696,6 +735,7 @@ export class OnFireCLI extends CommandLineInterface {
       console.log("args:", args);
       console.log("options:", options);
       console.log("input:", input);
+      console.log("process.stdout.rows.:", process.stdout.columns);
       this.updateSavedConfig();
       process.stdout.cursorTo(0);
       process.stdin.setRawMode(true);
@@ -839,7 +879,7 @@ export class OnFireCLI extends CommandLineInterface {
         };
         this.createTerminalBuffer();
         this.clearTerminalDownward();
-        this.runCommand({ debugging: false }); // TODO: Set to true for debugging mode. Implement a better way to debug
+        this.runCommand({ debugging: true }); // TODO: Set to true for debugging mode. Implement a better way to debug
       }
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
