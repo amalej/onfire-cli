@@ -4,7 +4,7 @@ OnFire is an experimental CLI that is built on top of the [Firebase CLI](https:/
 
 ## Demo
 
-https://github.com/amalej/onfire-cli/assets/78371908/27a4d471-2e27-497e-bf13-bbee63a7946e
+https://github.com/amalej/onfire-cli/assets/78371908/a5d9282e-30d1-47b0-bcf3-10f978f5740b
 
 ## Installation
 
