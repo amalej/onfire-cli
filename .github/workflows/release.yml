@@ -1,0 +1,17 @@
+name: "🚀 Release"
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    name: 🚀 Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Publish
+        uses: amalej/npm-package-publisher@latest
+        with:
+          access-token: ${{secrets.NPM_TOKEN}}
