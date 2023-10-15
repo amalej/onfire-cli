@@ -49,7 +49,7 @@ export class CommandLineInterface {
         const buf = process.stdin.read();
         const str = JSON.stringify(buf); // "\u001b[9;1R"
         const regex = /\[(.*)/g;
-        const xy = regex.exec(str)[0].replace(/\[|R"/g, "").split(";");
+        const xy = regex.exec(str)![0].replace(/\[|R"/g, "").split(";");
         const pos = { x: parseInt(xy[1]), y: parseInt(xy[0]) };
         process.stdin.setRawMode(false);
         resolve(pos);
@@ -111,10 +111,10 @@ export class CommandLineInterface {
     // const args = command.split(" ");
     let _base = args[0];
     let _arguments = {};
-    let _options = [];
-    let _flags = [];
-    let _input = [];
-    if (args === null) return null;
+    let _options: string[] = [];
+    let _flags: string[] = [];
+    let _input: string[] = [];
+    // if (args === null) return null;
     for (let i = 1; i < args.length; i++) {
       if (args[i].includes("=")) {
         const splitArg = args[i].split("=");
