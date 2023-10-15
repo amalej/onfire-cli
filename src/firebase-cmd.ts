@@ -367,7 +367,6 @@ export class FirebaseCommands {
     args?: ReadonlyArray<string>,
     options?: SpawnOptions
   ): SpawnSyncReturns<string | Buffer> {
-    console.log("RUN PROCESS");
     return spawnSync(command, args, { ...options, shell: true });
   }
 }
