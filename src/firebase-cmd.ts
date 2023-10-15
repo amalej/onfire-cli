@@ -1,4 +1,11 @@
-import { ChildProcess, SpawnOptions, exec, fork } from "child_process";
+import {
+  ChildProcess,
+  SpawnOptions,
+  SpawnSyncReturns,
+  exec,
+  fork,
+  spawnSync,
+} from "child_process";
 import spawn from "cross-spawn";
 
 const COMMAND_TIMEOUT = 10000;
@@ -15,6 +22,103 @@ export const DEFAULT_FEATURES = [
   "remoteconfig",
   "storage",
 ];
+
+interface FirebaseModule {
+  cli: {
+    commands: [
+      {
+        commands: [];
+        options: [
+          {
+            flags: string;
+            required: boolean;
+            optional: boolean;
+            mandatory: boolean;
+            negate: boolean;
+            long: string;
+            description: string;
+          },
+          {
+            flags: string;
+            required: boolean;
+            optional: boolean;
+            mandatory: boolean;
+            negate: boolean;
+            long: string;
+            description: string;
+          },
+          {
+            flags: string;
+            required: boolean;
+            optional: boolean;
+            mandatory: boolean;
+            negate: boolean;
+            long: string;
+            description: string;
+          },
+          {
+            flags: string;
+            required: boolean;
+            optional: boolean;
+            mandatory: boolean;
+            negate: boolean;
+            long: string;
+            description: string;
+          },
+          {
+            flags: string;
+            required: boolean;
+            optional: boolean;
+            mandatory: boolean;
+            negate: boolean;
+            long: string;
+            description: string;
+          },
+          {
+            flags: string;
+            required: boolean;
+            optional: boolean;
+            mandatory: boolean;
+            negate: boolean;
+            long: string;
+            description: string;
+          },
+          {
+            flags: string;
+            required: boolean;
+            optional: boolean;
+            mandatory: boolean;
+            negate: boolean;
+            long: string;
+            description: string;
+          }
+        ];
+        _execs: {};
+        _allowUnknownOption: false;
+        _args: [
+          {
+            required: boolean;
+            name: string;
+            variadic: boolean;
+          }
+        ];
+        _name: string;
+        _optionValues: {};
+        _storeOptionsAsProperties: boolean;
+        _passCommandToAction: boolean;
+        _actionResults: [];
+        _helpFlags: string;
+        _helpDescription: string;
+        _helpShortFlag: string;
+        _helpLongFlag: string;
+        _noHelp: false;
+        _description: string;
+        _events: {};
+        _eventsCount: number;
+      }
+    ];
+  };
+}
 
 interface FirebaseCommandArgs {
   required: boolean;
@@ -33,8 +137,31 @@ interface FirebaseCommandOptions {
   defaultValue: string | boolean | number | null;
 }
 
+export interface CommandConfig {
+  description: string;
+  usage: string;
+  options: {
+    [key: string]: CommandOptionsConfig;
+  } | null;
+  args: {
+    [key: string]: CommandArgsConfig;
+  } | null;
+}
+
+export interface CommandOptionsConfig {
+  option: string;
+  hint: string;
+  description: string;
+}
+
+export interface CommandArgsConfig {
+  required: boolean;
+  name: string;
+  variadic: boolean;
+}
+
 export class FirebaseCommands {
-  client = null;
+  client: FirebaseModule | null = null;
   protected defaultOptions = {
     "--project": {
       option: "--project",
@@ -67,8 +194,18 @@ export class FirebaseCommands {
       defaultValue: null,
     },
   };
+  private loadModuleChildProcess: ChildProcess | null = null;
 
-  protected async loadFirebaseModule() {
+  async killLoadModuleChildProcess(): Promise<void> {
+    if (this.loadModuleChildProcess?.pid) {
+      process.kill(this.loadModuleChildProcess.pid);
+      while (this.loadModuleChildProcess !== null) {
+        await new Promise((res) => setTimeout(res, 10));
+      }
+    }
+  }
+
+  protected async loadFirebaseModule(): Promise<FirebaseModule | null> {
     return new Promise((resolve, reject) => {
       const rejectTimout = setTimeout(() => {
         reject(
@@ -78,19 +215,20 @@ export class FirebaseCommands {
         );
       }, COMMAND_TIMEOUT);
       const npmSpawnPath = exec("npm root -g");
+      // console.log("npmSpawnPath:", npmSpawnPath.pid);
 
       let bufferString = "";
-      npmSpawnPath.stdout.on("data", (data) => {
+      npmSpawnPath.stdout?.on("data", (data) => {
         bufferString += data;
       });
 
-      npmSpawnPath.stdout.on("end", async () => {
+      npmSpawnPath.stdout?.on("end", async () => {
         clearTimeout(rejectTimout);
         const rootPath = bufferString.toString().trim();
         try {
           // Send child process some work
 
-          const childResponse = await new Promise((res, rej) => {
+          const childResponse: any | null = await new Promise((res, rej) => {
             const childRejectTimout = setTimeout(() => {
               reject(
                 new Error(
@@ -98,7 +236,11 @@ export class FirebaseCommands {
                 )
               );
             }, COMMAND_TIMEOUT);
-            var child = fork(`${__dirname}/module-loader.js`);
+            const child = fork(`${__dirname}/module-loader.js`, {
+              stdio: "ignore",
+            });
+            // console.log("fork:", child.pid);
+            this.loadModuleChildProcess = child;
 
             let childBufferString = "";
             child.on("message", function (m: string) {
@@ -114,10 +256,17 @@ export class FirebaseCommands {
                   `Firebase Tools module not found. Install using 'npm install -g firebase-tools'`
                 );
               }
-              res(JSON.parse(childBufferString));
+              this.loadModuleChildProcess = null;
+              try {
+                res(JSON.parse(childBufferString));
+              } catch (_) {
+                // Child process was exited too early
+                res(null);
+              }
             });
 
             child.send(`${rootPath}/firebase-tools`);
+            // this.loadModuleChildProcess.kill();
           });
 
           // await new Promise((res, rej) => setTimeout(res, 5000));
@@ -139,13 +288,16 @@ export class FirebaseCommands {
     return `${start}${str}${end}`;
   }
 
-  protected async getCommandsUsingModule() {
+  protected async getCommandsUsingModule(): Promise<{
+    [key: string]: CommandConfig;
+  } | null> {
     this.client = await this.loadFirebaseModule();
+    if (this.client === null || this.client.cli === null) return null;
     const commandConfig = this.client.cli.commands.reduce(
       (comMap: any, com: any) => {
         comMap[com._name] = {
           command: com._name,
-          description: (com._description || "No description").replace(
+          description: (com._description ?? "No description").replace(
             /\n.*/g,
             ""
           ),
@@ -176,12 +328,12 @@ export class FirebaseCommands {
               optMap[opt.long] = {
                 option: opt.long,
                 flags: opt.flags.replace(/.*(?=--)/, ""),
-                hint: _optionValue || null,
+                hint: _optionValue ?? null,
                 required: opt.required,
                 optional: opt.optional,
                 long: opt.long,
                 description: opt.description,
-                defaultValue: opt.defaultValue || null,
+                defaultValue: opt.defaultValue ?? null,
               };
               return optMap;
             },
@@ -205,16 +357,17 @@ export class FirebaseCommands {
     return commandConfig;
   }
 
-  async getCommandConfig(): Promise<{ [key: string]: any }> {
+  async getCommandConfig(): Promise<{ [key: string]: CommandConfig } | null> {
     const _out = this.getCommandsUsingModule();
     return _out;
   }
 
-  static runCommand(
+  runCommand(
     command: string,
     args?: ReadonlyArray<string>,
     options?: SpawnOptions
-  ): ChildProcess {
-    return spawn(command, args, options);
+  ): SpawnSyncReturns<string | Buffer> {
+    console.log("RUN PROCESS");
+    return spawnSync(command, args, { ...options, shell: true });
   }
 }

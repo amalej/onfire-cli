@@ -8,8 +8,10 @@ export class CliCache {
   static async getAppDir(): Promise<string> {
     let plat = process.platform;
 
-    let homeDir = process.env[plat == "win32" ? "USERPROFILE" : "HOME"];
-    let appDir = null;
+    let homeDir = process.env[
+      plat == "win32" ? "USERPROFILE" : "HOME"
+    ] as string;
+    let appDir: string;
 
     if (plat == "win32") {
       appDir = path.join(homeDir, "AppData", `${APP_NAME}`);

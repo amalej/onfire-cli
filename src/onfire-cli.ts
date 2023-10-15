@@ -1,31 +1,19 @@
 import readline from "readline";
-import { DEFAULT_FEATURES, FirebaseCommands } from "./firebase-cmd";
+import {
+  CommandConfig,
+  CommandOptionsConfig,
+  DEFAULT_FEATURES,
+  FirebaseCommands,
+} from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
-import { ChildProcess, exec, execSync } from "child_process";
+import {
+  ChildProcess,
+  SpawnSyncReturns,
+  exec,
+  execSync,
+  spawnSync,
+} from "child_process";
 import { CliCache, MAX_CACHE_COUNT } from "./cli-cache";
-
-interface CommandConfig {
-  description: string;
-  usage: string;
-  options: {
-    [key: string]: CommandOptionsConfig;
-  } | null;
-  args: {
-    [key: string]: CommandArgsConfig;
-  } | null;
-}
-
-interface CommandOptionsConfig {
-  option: string;
-  hint: string;
-  description: string;
-}
-
-interface CommandArgsConfig {
-  required: boolean;
-  name: string;
-  variadic: boolean;
-}
 
 interface SavedConfig {
   pastCommands?: string[] | undefined;
@@ -35,7 +23,7 @@ interface SavedConfig {
 export class OnFireCLI extends CommandLineInterface {
   input = "";
 
-  private firebaseSpawn: ChildProcess | null = null;
+  private isChildProcessRunning: boolean = false;
   private listItemIndex: number = 0;
   private itemList: Array<string> = [];
   private isProcessingExit = false;
@@ -61,7 +49,7 @@ export class OnFireCLI extends CommandLineInterface {
     this.firebaseCli = new FirebaseCommands();
     this.savedConfig = savedConfig;
     // Modify the `init` inputs
-    const features: string[] = this.savedConfig["feature"] || [];
+    const features: string[] = this.savedConfig["feature"] ?? [];
     const missingDefaultFeatures = DEFAULT_FEATURES.filter(
       (feature) => !features.includes(feature)
     );
@@ -98,8 +86,8 @@ export class OnFireCLI extends CommandLineInterface {
     ) {
       return [];
     }
-    return Object.keys(this.firebaseCommands[base].options).filter(
-      (opt) => this.firebaseCommands[base].options[opt].hint === null
+    return Object.keys(this.firebaseCommands[base].options!).filter(
+      (opt) => this.firebaseCommands[base].options![opt].hint === null
     );
   }
 
@@ -115,8 +103,8 @@ export class OnFireCLI extends CommandLineInterface {
     ) {
       return [];
     }
-    return Object.keys(this.firebaseCommands[base].options).filter(
-      (opt) => this.firebaseCommands[base].options[opt].hint !== null
+    return Object.keys(this.firebaseCommands[base].options!).filter(
+      (opt) => this.firebaseCommands[base].options![opt].hint !== null
     );
   }
 
@@ -125,7 +113,7 @@ export class OnFireCLI extends CommandLineInterface {
     if (this.firebaseCommands[base] === undefined) {
       return [];
     }
-    return Object.keys(this.firebaseCommands[base].args);
+    return Object.keys(this.firebaseCommands[base].args ?? {});
   }
 
   protected getItemsToDisplay(itemList: string[]) {
@@ -149,8 +137,8 @@ export class OnFireCLI extends CommandLineInterface {
   }
 
   protected getPastCommandsToRender(): string[] {
-    const renderMessage = [];
-    const list = this.savedConfig.pastCommands || [];
+    const renderMessage: string[] = [];
+    const list = this.savedConfig.pastCommands ?? [];
     this.itemList = list;
     const slicedList = this.getItemsToDisplay(list);
     for (let i = 0; i < this.itemList.length; i++) {
@@ -170,7 +158,7 @@ export class OnFireCLI extends CommandLineInterface {
   }
 
   protected getCommandsToRender(): string[] {
-    const renderMessage = [];
+    const renderMessage: string[] = [];
     const { base } = this.getCommandParams(this.input);
     const list = Object.keys(this.firebaseCommands);
 
@@ -206,7 +194,7 @@ export class OnFireCLI extends CommandLineInterface {
   }
 
   protected getCommandOptionsToRender(): string[] {
-    const renderMessage = [];
+    const renderMessage: string[] = [];
     const { base, args, options } = this.getCommandParams(this.input);
     const typedWord = this.getTypedWord();
     const _options = this.firebaseCommands[base].options || {};
@@ -236,7 +224,7 @@ export class OnFireCLI extends CommandLineInterface {
       const _option = this.itemList[i];
       if (!slicedList.includes(_option)) continue;
       if (_option !== undefined) {
-        const optString = `${_option} ${_options[_option].hint || ""}`;
+        const optString = `${_option} ${_options[_option].hint ?? ""}`;
         const optDescription = `-> ${_options[_option].description}`;
         const msg =
           i === this.listItemIndex
@@ -290,7 +278,9 @@ export class OnFireCLI extends CommandLineInterface {
     const typedWord = this.getTypedWord();
     const inputIndexShift = typedWord.word === "" ? 0 : 1;
     const inputIndex = input.length - inputIndexShift;
-    const argName = Object.keys(this.firebaseCommands[base].args)[inputIndex];
+    const argName = Object.keys(this.firebaseCommands[base].args ?? {})[
+      inputIndex
+    ];
     this.renderCommandInfo({ highlight: argName });
     const list = this.savedConfig[argName] || [];
 
@@ -326,11 +316,11 @@ export class OnFireCLI extends CommandLineInterface {
     const msg = `${this.textBold(
       this.textYellow("Description:")
     )} ${this.capitalizeFirstLetter(
-      this.firebaseCommands[base].options[typedFlag.flag].description
+      this.firebaseCommands[base].options![typedFlag.flag].description
     )}`;
     console.log(msg);
     const typedWord = this.getTypedWord();
-    const list = this.savedConfig[typedFlag.flag] || [];
+    const list = this.savedConfig[typedFlag.flag] ?? [];
     const filteredList = list.filter((argVal: string) =>
       argVal.startsWith(typedWord.word.replace(/--.*=/g, ""))
     );
@@ -363,13 +353,17 @@ export class OnFireCLI extends CommandLineInterface {
     const missingArgs: Array<CommandOptionsConfig> = [];
     const cmdConfig = this.firebaseCommands[base];
     for (let flag of flags) {
-      if (_nonNullOptions.includes(flag) && args[flag] === undefined) {
+      if (
+        _nonNullOptions.includes(flag) &&
+        args[flag] === undefined &&
+        cmdConfig.options
+      ) {
         missingArgs.push(cmdConfig.options[flag]);
       }
     }
 
     if (missingArgs.length > 0) {
-      const msg = [];
+      const msg: string[] = [];
       for (let missingArg of missingArgs) {
         msg.push(
           `${missingArg.option} ${this.textBold(
@@ -462,7 +456,7 @@ export class OnFireCLI extends CommandLineInterface {
     const posX = this.currentCursorPos.x - this.prefix.length;
     const words = this.input
       .replace(/=/g, " ")
-      .match(/(".*?"|'.*?'|[^"\s]+)+(?=\s*|\s*$)/g) || [""];
+      .match(/(".*?"|'.*?'|[^"\s]+)+(?=\s*|\s*$)/g) ?? [""];
     for (let i = 0; i < words.length; i++) {
       const currentLen = words.slice(0, i + 1).join("").length + i;
       if (posX <= currentLen) {
@@ -498,7 +492,7 @@ export class OnFireCLI extends CommandLineInterface {
       const currentLen = words.slice(0, i + 1).join("").length + i;
       if (posX <= currentLen) {
         return {
-          flag: argFlags.at(-1),
+          flag: argFlags.at(-1) ?? "",
           start: currentLen - words[i].length,
           end: currentLen,
         };
@@ -506,7 +500,7 @@ export class OnFireCLI extends CommandLineInterface {
     }
 
     return {
-      flag: argFlags.at(-1),
+      flag: argFlags.at(-1) ?? "",
       start: posX,
       end: posX,
     };
@@ -549,7 +543,7 @@ export class OnFireCLI extends CommandLineInterface {
       if (this.savedConfig[optArgFlag] === undefined) {
         if (args[optArgFlag].includes(",")) {
           const _splitArg =
-            args[optArgFlag].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+            args[optArgFlag].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) ?? [];
           this.savedConfig[optArgFlag] = [args[optArgFlag], ..._splitArg];
         } else {
           this.savedConfig[optArgFlag] = [args[optArgFlag]];
@@ -570,7 +564,7 @@ export class OnFireCLI extends CommandLineInterface {
     }
 
     // Handle commands args
-    const cmdArgConfig = this.firebaseCommands[base].args;
+    const cmdArgConfig = this.firebaseCommands[base].args || {};
     const argFlags = Object.keys(cmdArgConfig);
     for (let i = 0; i < argFlags.length; i++) {
       if (input[i] === undefined) continue; // In case user does not input a command argument
@@ -578,7 +572,7 @@ export class OnFireCLI extends CommandLineInterface {
       if (this.savedConfig[argFlag] === undefined) {
         if (input[i].includes(",")) {
           const _splitArg =
-            input[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+            input[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) ?? [];
           this.savedConfig[argFlag] = [input[i], ..._splitArg];
         } else {
           this.savedConfig[argFlag] = [input[i]];
@@ -608,7 +602,10 @@ export class OnFireCLI extends CommandLineInterface {
     }
     this.clearTerminalDownward();
     console.log(`\x1b[K`);
+    process.stdout.cursorTo(0);
+    process.stdin.setRawMode(false);
 
+    let hasExecSyncError = false;
     // Handle non Firebase commands
     if (this.firebaseCommands[base] === undefined) {
       if (this.input.trim() !== "") {
@@ -630,14 +627,28 @@ export class OnFireCLI extends CommandLineInterface {
             console.clear();
           } else {
             // TODO: Might be a good idea to use spawn instead?
-            execSync(this.input, { stdio: "inherit" });
+            await this.firebaseCli.killLoadModuleChildProcess();
+            if (this.isChildProcessRunning === false) {
+              this.isChildProcessRunning = true;
+              execSync(this.input, { stdio: "inherit" });
+              this.isChildProcessRunning = false;
+            }
           }
         } catch (error) {
-          const errorMessage = error.stderr || error.message;
-          console.log(
-            this.textBold(this.textRed("Error:")),
-            errorMessage.toString()
-          );
+          hasExecSyncError = true;
+          console.log("");
+          if (error.signal === "SIGINT") {
+            console.log(
+              this.textBold(this.textGreen("OnFire:")),
+              "Received SIGINT signal"
+            );
+          } else {
+            const errorMessage = error.stderr ?? error.message;
+            console.log(
+              this.textBold(this.textRed("Error:")),
+              errorMessage.toString()
+            );
+          }
         }
       }
 
@@ -656,10 +667,17 @@ export class OnFireCLI extends CommandLineInterface {
       process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
       this.shiftCursorPosition(this.prefix.length);
 
-      this.input = "";
-      this.moveCursorToInputStart();
+      if (hasExecSyncError === false) {
+        this.input = "";
+        this.moveCursorToInputStart();
+        this.renderIO();
+      } else {
+        process.stdout.write(this.input);
+        this.shiftCursorPosition(this.input.length);
+        this.renderIO();
+      }
       this.renderIO();
-      this.firebaseSpawn = null;
+      this.isChildProcessRunning = false;
       return;
     }
 
@@ -699,9 +717,15 @@ export class OnFireCLI extends CommandLineInterface {
       this.moveCursorToInputStart();
       this.renderIO();
     } else {
-      process.stdin.pause();
       const spawnCommands = this.input.trim().split(" ");
-      this.firebaseSpawn = FirebaseCommands.runCommand(
+      process.stdout.cursorTo(0);
+      process.stdin.setRawMode(false);
+      // process.stdin.removeAllListeners("keypress");
+      // process.stdin.pause();
+      // await this.firebaseCli.killLoadModuleChildProcess();
+      if (this.isChildProcessRunning === true) return;
+      this.isChildProcessRunning = true;
+      const firebaseSpawn = this.firebaseCli.runCommand(
         "firebase",
         [...spawnCommands],
         {
@@ -709,61 +733,67 @@ export class OnFireCLI extends CommandLineInterface {
         }
       );
 
-      this.firebaseSpawn.on("spawn", () => {
-        process.stdout.cursorTo(0);
-        process.stdin.setRawMode(false);
-      });
+      const code = firebaseSpawn.status;
 
-      this.firebaseSpawn.on("exit", async (code) => {
-        if (code === 0) {
-          this.updateSavedConfig();
-        }
-        process.stdout.cursorTo(0);
-        const exitMessage =
-          code === 0
-            ? `${this.textGreen(
-                "OnFire:"
-              )} Command finished with exit code ${this.textGreen(
-                code?.toString()
-              )}\n`
-            : `${this.textRed(
-                "OnFire:"
-              )} Command finished with exit code ${this.textRed(
-                code?.toString()
-              )}\n`;
-        console.log(exitMessage);
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
+      // this.isChildProcessRunning.on("spawn", () => {
+      // process.stdout.cursorTo(0);
+      // process.stdin.setRawMode(false);
+      // });
 
-        this.createTerminalBuffer();
-        this.originalCursorPos = await this.getCursorPosition();
-        // Shift the cursor position
-        this.originalCursorPos = {
-          x: this.originalCursorPos.x - 1,
-          y: this.originalCursorPos.y - 1,
-        };
-        this.currentCursorPos = { ...this.originalCursorPos };
-        process.stdin.setRawMode(true);
-        process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
-        this.shiftCursorPosition(this.prefix.length);
+      // this.isChildProcessRunning.on("exit", async (code) => {
+      if (code === 0) {
+        this.updateSavedConfig();
+      }
+      process.stdout.cursorTo(0);
+      const exitMessage =
+        code === 0
+          ? `${this.textGreen(
+              "OnFire:"
+            )} Command finished with exit code ${this.textGreen(
+              code?.toString()
+            )}\n`
+          : `${this.textRed(
+              "OnFire:"
+            )} Command finished with exit code ${this.textRed(
+              (code ?? "null").toString()
+            )}\n`;
+      console.log(exitMessage);
+      process.stdin.setRawMode(true);
+      // process.stdin.on("keypress", (str, key) => {
+      //   this.keyPressListener(str, key);
+      // });
+      // process.stdin.resume();
 
-        if (code === 0) {
-          this.input = "";
-          this.moveCursorToInputStart();
-          this.renderIO();
-        } else {
-          process.stdout.write(this.input);
-          this.shiftCursorPosition(this.input.length);
-          this.renderIO();
-        }
-        this.firebaseSpawn = null;
-      });
+      this.createTerminalBuffer();
+      this.originalCursorPos = await this.getCursorPosition();
+      // Shift the cursor position
+      this.originalCursorPos = {
+        x: this.originalCursorPos.x - 1,
+        y: this.originalCursorPos.y - 1,
+      };
+      this.currentCursorPos = { ...this.originalCursorPos };
+      process.stdin.setRawMode(true);
+      process.stdout.write(`${this.textBold(this.textGreen(this.prefix))}`);
+      this.shiftCursorPosition(this.prefix.length);
+
+      if (code === 0) {
+        this.input = "";
+        this.moveCursorToInputStart();
+        this.renderIO();
+      } else {
+        process.stdout.write(this.input);
+        this.shiftCursorPosition(this.input.length);
+        this.renderIO();
+      }
+      this.isChildProcessRunning = false;
+      // });
     }
   }
 
   private async handleExit() {
     if (!this.isProcessingExit) {
       this.isProcessingExit = true;
+      await this.firebaseCli.killLoadModuleChildProcess();
       await CliCache.writeToFile(this.savedConfig);
       process.exit();
     } else {
@@ -779,7 +809,7 @@ export class OnFireCLI extends CommandLineInterface {
     const xPos = this.currentCursorPos.x - prefixLen;
 
     if (key.ctrl == true && key.name == "c") {
-      if (this.firebaseSpawn === null && this.input === "") {
+      if (this.isChildProcessRunning === false && this.input === "") {
         this.handleExit();
       } else {
         render = true;
@@ -799,16 +829,18 @@ export class OnFireCLI extends CommandLineInterface {
         this.currentCursorPos.x -= 1;
       }
     } else if (key.name === "return") {
-      this.moveCursorToInputStart();
-      this.shiftCursorPosition(this.input.length);
-      this.listItemIndex = 0;
-      this.displayBuffer = {
-        start: 0,
-        end: this.maxItemShown,
-      };
-      this.createTerminalBuffer();
-      this.clearTerminalDownward();
-      this.runCommand({ debugging: false }); // TODO: Set to true for debugging mode. Implement a better way to debug
+      if (this.isChildProcessRunning == false) {
+        this.moveCursorToInputStart();
+        this.shiftCursorPosition(this.input.length);
+        this.listItemIndex = 0;
+        this.displayBuffer = {
+          start: 0,
+          end: this.maxItemShown,
+        };
+        this.createTerminalBuffer();
+        this.clearTerminalDownward();
+        this.runCommand({ debugging: false }); // TODO: Set to true for debugging mode. Implement a better way to debug
+      }
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
         this.listItemIndex -= 1;
@@ -878,15 +910,22 @@ export class OnFireCLI extends CommandLineInterface {
 
   protected async loadFirebaseCommands() {
     if (this.savedConfig["firebaseCommands"] === undefined) {
-      this.firebaseCommands = await this.firebaseCli.getCommandConfig();
+      const cmdConfig = await this.firebaseCli.getCommandConfig();
+      if (cmdConfig === null) {
+        throw Error("Failed to load Firebase Commands");
+      } else {
+        this.firebaseCommands = cmdConfig;
+      }
     } else {
       this.firebaseCommands = this.savedConfig["firebaseCommands"];
       this.firebaseCli
         .getCommandConfig()
         .then((firebaseCommands) => {
-          this.firebaseCommands = firebaseCommands;
-          this.savedConfig["firebaseCommands"] = this.firebaseCommands;
-          this.attachCustomCommands();
+          if (firebaseCommands !== null) {
+            this.firebaseCommands = firebaseCommands;
+            this.savedConfig["firebaseCommands"] = this.firebaseCommands;
+            this.attachCustomCommands();
+          }
         })
         .catch((_) => {
           // No action needed since we can use the cached firebaseCommands
@@ -929,7 +968,8 @@ export class OnFireCLI extends CommandLineInterface {
     this.renderIO();
     process.stdin.setRawMode(true);
     process.on("SIGINT", function () {
-      console.log(`\x1b[32mOnFire:\x1b[0m Received SIGINT signal`);
+      // Do nothing. This is just to override the current SIGNINT handler
+      // console.log(`\x1b[32mOnFire:\x1b[0m Received SIGINT signal`);
     });
     process.stdin.on("keypress", (str, key) => {
       this.keyPressListener(str, key);

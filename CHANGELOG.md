@@ -1,5 +1,9 @@
 <!-- ADD CHANGES HERE -->
 
+- Fixed issue where spawn processes cannot be exitted(#56)
+- Fixed issue where multiple spawn processes are spawned by spamming `Enter` key
+- [dev] set `strictNullChecks` to `true`
+
 v1.3.0
 
 - Fixed issue where argument selection does not shown possible values(#45)
