@@ -761,8 +761,8 @@ export class OnFireCLI extends CommandLineInterface {
       process.stdout.cursorTo(0);
       process.stdin.setRawMode(false);
       // process.stdin.removeAllListeners("keypress");
-      // process.stdin.pause();
-      // await this.firebaseCli.killLoadModuleChildProcess();
+      process.stdin.pause();
+      await this.firebaseCli.killLoadModuleChildProcess();
       if (this.isChildProcessRunning === true) return;
       this.isChildProcessRunning = true;
       const firebaseSpawn = this.firebaseCli.runCommand(
@@ -802,7 +802,7 @@ export class OnFireCLI extends CommandLineInterface {
       // process.stdin.on("keypress", (str, key) => {
       //   this.keyPressListener(str, key);
       // });
-      // process.stdin.resume();
+      process.stdin.resume();
 
       this.createTerminalBuffer();
       this.originalCursorPos = await this.getCursorPosition();
