@@ -879,7 +879,7 @@ export class OnFireCLI extends CommandLineInterface {
         };
         this.createTerminalBuffer();
         this.clearTerminalDownward();
-        this.runCommand({ debugging: true }); // TODO: Set to true for debugging mode. Implement a better way to debug
+        this.runCommand({ debugging: false }); // TODO: Set to true for debugging mode. Implement a better way to debug
       }
     } else if (key.name === "up") {
       if (this.listItemIndex > 0) {
