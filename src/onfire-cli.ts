@@ -6,15 +6,8 @@ import {
   FirebaseCommands,
 } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
-import {
-  ChildProcess,
-  SpawnSyncReturns,
-  exec,
-  execSync,
-  spawnSync,
-} from "child_process";
+import { execSync } from "child_process";
 import { CliCache, MAX_CACHE_COUNT } from "./cli-cache";
-import { readdir } from "fs/promises";
 import { existsSync, readdirSync, statSync } from "fs";
 import path from "path";
 
