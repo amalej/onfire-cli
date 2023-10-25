@@ -6,14 +6,10 @@ import {
   FirebaseCommands,
 } from "./firebase-cmd";
 import { CommandLineInterface } from "./cli";
-import {
-  ChildProcess,
-  SpawnSyncReturns,
-  exec,
-  execSync,
-  spawnSync,
-} from "child_process";
+import { execSync } from "child_process";
 import { CliCache, MAX_CACHE_COUNT } from "./cli-cache";
+import { existsSync, readdirSync, statSync } from "fs";
+import path from "path";
 
 interface SavedConfig {
   pastCommands?: string[] | undefined;
@@ -425,6 +421,81 @@ export class OnFireCLI extends CommandLineInterface {
     }
   }
 
+  private async renderPaths() {
+    const { base } = this.getCommandParams(this.input);
+    if (this.firebaseCommands[base] !== undefined) {
+      // TODO: We should add better handling when running a Firebase command
+      // For now, do nothing since this method is kinda wonky
+      return;
+    }
+
+    this.clearTerminalDownward();
+    console.log("");
+    // const date = new Date();
+    // console.log(date);
+    const typedWord = this.getTypedWord();
+    const modifiedPath = path.join(process.cwd(), typedWord.word);
+    const modifiedPathExists = existsSync(modifiedPath);
+    const currentPath = modifiedPathExists
+      ? modifiedPath
+      : modifiedPath.substring(0, modifiedPath.lastIndexOf(path.sep));
+    const paths: string[] = [];
+    const pathToRead = modifiedPathExists ? modifiedPath : currentPath;
+    const pathString = modifiedPathExists
+      ? typedWord.word
+      : typedWord.word.substring(0, typedWord.word.lastIndexOf("/")) ||
+        typedWord.word.substring(0, typedWord.word.lastIndexOf("\\"));
+
+    // console.log("modifiedPathExists:", modifiedPathExists);
+    // console.log("pathString:", pathString);
+    try {
+      const pathStat = statSync(pathToRead);
+      if (!pathStat.isDirectory()) return;
+      const _paths = readdirSync(pathToRead);
+      paths.push(..._paths);
+      const list = paths.map((_path) => {
+        const stat = statSync(path.join(pathToRead, _path));
+        const joined =
+          pathString === ""
+            ? _path
+            : path.normalize([pathString, _path].join(path.sep));
+        if (stat.isDirectory()) {
+          return `${joined}${path.sep}`;
+        }
+        return `${joined}`;
+      });
+
+      // console.log("list:", list.join(" | "));
+      const pathInput =
+        typedWord.word === "" ? typedWord.word : path.normalize(typedWord.word);
+      const filteredList = list.filter((argVal: string) =>
+        argVal.startsWith(pathInput)
+      );
+      this.itemList = filteredList;
+      const slicedList = this.getItemsToDisplay(filteredList);
+      // console.log("pathInput:", pathInput);
+      // console.log("filteredList:", filteredList.join(" | "));
+      // console.log("listItemIndex:", this.listItemIndex);
+      for (let i = 0; i < this.itemList.length; i++) {
+        const pathVal = this.itemList[i];
+        if (!slicedList.includes(pathVal)) continue;
+        if (pathVal !== undefined) {
+          const msg =
+            i === this.listItemIndex
+              ? `${this.textCyan(this.textBold(">"))} ${this.textGreen(
+                  this.textBold(pathVal)
+                )}`
+              : `  ${this.textBold(pathVal)}`;
+          console.log(this.displaceText(`${msg}\x1b[K`));
+        } else {
+          console.log(`-\x1b[K`);
+        }
+      }
+    } catch (_) {
+      // Do nothing. Path and last safest path does not exists
+    }
+  }
+
   private renderIO(newChar: string = "", tabCompletion: boolean = false) {
     if (tabCompletion) {
       this.handleTabCompletion();
@@ -467,6 +538,7 @@ export class OnFireCLI extends CommandLineInterface {
     } else {
       this.itemList = [];
       this.clearTerminalDownward();
+      this.renderPaths();
     }
     this.moveCursorToSavedCurrentPos();
   }
@@ -655,8 +727,10 @@ export class OnFireCLI extends CommandLineInterface {
             if (path === undefined) {
               console.log(`${process.cwd()}`);
             } else {
-              execSync(this.input, { stdio: "pipe" });
+              // execSync(this.input, { stdio: "pipe" });
+              // if (debugging === false) {
               process.chdir(path);
+              // }
             }
           } else if (base === "clear" || base === "cls") {
             console.clear();
@@ -667,7 +741,7 @@ export class OnFireCLI extends CommandLineInterface {
           } else {
             // TODO: Might be a good idea to use spawn instead?
             await this.firebaseCli.killLoadModuleChildProcess();
-            if (this.isChildProcessRunning === false) {
+            if (this.isChildProcessRunning === false && debugging === false) {
               this.isChildProcessRunning = true;
               execSync(this.input, { stdio: "inherit" });
               this.isChildProcessRunning = false;
@@ -912,6 +986,10 @@ export class OnFireCLI extends CommandLineInterface {
     } else if (key.name === "tab") {
       render = true;
       tabCompletion = true;
+      this.displayBuffer = {
+        start: 0,
+        end: this.maxItemShown,
+      };
     } else if (str !== undefined && str.length === 1) {
       render = true;
       newChar = str;

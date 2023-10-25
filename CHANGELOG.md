@@ -1,5 +1,10 @@
 <!-- ADD CHANGES HERE -->
 
+v1.3.2
+
+- Added feature to list folders/files in current path to make it easier to use
+  `cd` and `git add <file>` commands
+
 v1.3.1
 
 - Fixed issue where spawn processes cannot be exitted(#56)
