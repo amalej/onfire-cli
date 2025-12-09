@@ -1,5 +1,10 @@
 <!-- ADD CHANGES HERE -->
 
+Unreleased
+
+- Fixed issue where Onfire CLI cannot parse commands on firebase-tools v15
+  - This is due to the lazy loading feature preventing all commands from being loaded
+
 v1.3.2
 
 - Added feature to list folders/files in current path to make it easier to use
