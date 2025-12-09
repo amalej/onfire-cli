@@ -1034,6 +1034,8 @@ export class OnFireCLI extends CommandLineInterface {
       } else {
         this.firebaseCommands = cmdConfig;
       }
+      this.attachCustomCommands();
+      this.savedConfig["firebaseCommands"] = this.firebaseCommands;
     } else {
       this.firebaseCommands = this.savedConfig["firebaseCommands"];
       this.firebaseCli
@@ -1041,16 +1043,16 @@ export class OnFireCLI extends CommandLineInterface {
         .then((firebaseCommands) => {
           if (firebaseCommands !== null) {
             this.firebaseCommands = firebaseCommands;
-            this.savedConfig["firebaseCommands"] = this.firebaseCommands;
             this.attachCustomCommands();
+            this.savedConfig["firebaseCommands"] = this.firebaseCommands;
+          } else {
+            throw new Error("Could not load firebase-tools commands");
           }
         })
-        .catch((_) => {
-          // No action needed since we can use the cached firebaseCommands
+        .catch((err) => {
+          throw err;
         });
     }
-    this.attachCustomCommands();
-    this.savedConfig["firebaseCommands"] = this.firebaseCommands;
   }
 
   async init() {

@@ -7,6 +7,7 @@ import {
   spawnSync,
 } from "child_process";
 import spawn from "cross-spawn";
+import { writeFileSync } from "fs";
 
 const COMMAND_TIMEOUT = 10000;
 
@@ -251,12 +252,15 @@ export class FirebaseCommands {
             });
 
             child.on("exit", () => {
-              if (childBufferString === "ENOENT") {
-                throw new Error(
-                  `Firebase Tools module not found. Install using 'npm install -g firebase-tools'`
-                );
-              }
+              this.loadModuleChildProcess?.kill();
               this.loadModuleChildProcess = null;
+              if (childBufferString.includes("ERROR__")) {
+                const message = childBufferString.replace(
+                  "ERROR__",
+                  "Error loading module: "
+                );
+                throw new Error(message);
+              }
               try {
                 res(JSON.parse(childBufferString));
               } catch (_) {
@@ -266,7 +270,6 @@ export class FirebaseCommands {
             });
 
             child.send(`${rootPath}/firebase-tools`);
-            // this.loadModuleChildProcess.kill();
           });
 
           // await new Promise((res, rej) => setTimeout(res, 5000));
