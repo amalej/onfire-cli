@@ -1,6 +1,6 @@
 <!-- ADD CHANGES HERE -->
 
-Unreleased
+v1.4.0
 
 - Fixed issue where Onfire CLI cannot parse commands on firebase-tools v15
   - This is due to the lazy loading feature preventing all commands from being loaded
