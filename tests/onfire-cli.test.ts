@@ -73,7 +73,7 @@ class MockOnFireCLI extends OnFireCLI {
 }
 
 const appdistribution = {
-  distributeLen: 10,
+  distributeLen: 20,
   testers: {
     addLen: 5,
     removeLen: 5,
@@ -94,14 +94,14 @@ describe("Test loading of Firebase commands", () => {
   it("Should load 'appdistribution:distribute' command", async () => {
     const firebaseCommands = onfireCLI._getFirebaseCommands();
     expect(firebaseCommands["appdistribution:distribute"].description).toEqual(
-      "upload a release binary"
+      "upload a release binary and optionally distribute it to testers and run automated tests"
     );
   });
 
   it("Should load 'appdistribution:testers:add' command", async () => {
     const firebaseCommands = onfireCLI._getFirebaseCommands();
     expect(firebaseCommands["appdistribution:testers:add"].description).toEqual(
-      "add testers to project (and possibly group)"
+      "add testers to project (and App Distribution group, if specified via flag)"
     );
   });
 
@@ -109,7 +109,9 @@ describe("Test loading of Firebase commands", () => {
     const firebaseCommands = onfireCLI._getFirebaseCommands();
     expect(
       firebaseCommands["appdistribution:testers:remove"].description
-    ).toEqual("remove testers from a project (or group)");
+    ).toEqual(
+      "remove testers from a project (or App Distribution group, if specified via flag)"
+    );
   });
 
   it("Should load 'exit' command", async () => {
@@ -147,6 +149,15 @@ describe("Run simple commands", () => {
       "--testers-file",
       "--groups",
       "--groups-file",
+      "--test-devices",
+      "--test-devices-file",
+      "--test-username",
+      "--test-password",
+      "--test-password-file",
+      "--test-username-resource",
+      "--test-password-resource",
+      "--test-case-ids",
+      "--test-case-ids-file",
       "--project",
     ]);
   });
@@ -471,9 +482,9 @@ describe("Test getting rendering list", () => {
       expect(renderMessage.length).toEqual(5);
     });
 
-    it("Should show that the selected command in index [0] is 'appdistribution:distribute -> upload a release binary'", () => {
+    it("Should show that the selected command in index [0] is 'appdistribution:distribute -> upload a release binary and optionally distribute it to testers and run automated tests'", () => {
       const renderMessage = onfireCLI._getCommandsToRender();
-      const cmdLabel = `-> upload a release binary`;
+      const cmdLabel = `-> upload a release binary and optionally distribute it to testers and run automated tests`;
       expect(renderMessage[0]).toEqual(
         `${cli._textCyan(cli._textBold(">"))} ${cli._textGreen(
           cli._textBold("appdistribution:distribute")
@@ -481,10 +492,10 @@ describe("Test getting rendering list", () => {
       );
     });
 
-    it("Should show that the unselected command in index [1] is 'appdistribution:testers:add -> add testers to project (and possibly group)'", () => {
+    it("Should show that the unselected command in index [2] is 'appdistribution:testers:add -> add testers to project (and App Distribution group, if specified via flag)'", () => {
       const renderMessage = onfireCLI._getCommandsToRender();
-      const cmdLabel = `-> add testers to project (and possibly group)`;
-      expect(renderMessage[1]).toEqual(
+      const cmdLabel = `-> add testers to project (and App Distribution group, if specified via flag)`;
+      expect(renderMessage[2]).toEqual(
         `  ${cli._textBold("appdistribution:testers:add")} ${cmdLabel}\x1b[K`
       );
     });
@@ -540,15 +551,6 @@ describe("Test getting rendering list", () => {
         `${cli._textCyan(cli._textBold(">"))} ${cli._textGreen(
           cli._textBold("emulators:start")
         )} ${cli._textGreen(cmdLabel)}\x1b[K`
-      );
-    });
-
-    it("Should show that the unselected option in index [1] is 'experimental:functions:shell -> launch full Node shell with emulated functions. (Alias for `firebase functions:shell.)'", () => {
-      const renderMessage = onfireCLI._getCommandsToRender();
-      const cmdLabel =
-        "-> launch full Node shell with emulated functions. (Alias for `firebase functions:shell.)";
-      expect(renderMessage[1]).toEqual(
-        `  ${cli._textBold("experimental:functions:shell")} ${cmdLabel}\x1b[K`
       );
     });
   });
