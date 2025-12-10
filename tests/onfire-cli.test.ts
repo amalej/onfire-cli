@@ -473,16 +473,14 @@ describe("Test getting rendering list", () => {
   });
 
   describe("Load commands to render", () => {
-    beforeAll(() => {
-      onfireCLI._setInput("appdistribution");
-    });
-
     it("Should show that there are 5 commands to render", () => {
+      onfireCLI._setInput("appdistribution");
       const renderMessage = onfireCLI._getCommandsToRender();
       expect(renderMessage.length).toEqual(5);
     });
 
     it("Should show that the selected command in index [0] is 'appdistribution:distribute -> upload a release binary and optionally distribute it to testers and run automated tests'", () => {
+      onfireCLI._setInput("appdistribution");
       const renderMessage = onfireCLI._getCommandsToRender();
       const cmdLabel = `-> upload a release binary and optionally distribute it to testers and run automated tests`;
       expect(renderMessage[0]).toEqual(
@@ -492,7 +490,17 @@ describe("Test getting rendering list", () => {
       );
     });
 
+    it("Should show that the unselected command in index [1] is 'functions:secrets:access -> access secret value given secret and its version. Defaults to accessing the latest version'", () => {
+      onfireCLI._setInput("functionseec");
+      const renderMessage = onfireCLI._getCommandsToRender();
+      const cmdLabel = `-> access secret value given secret and its version. Defaults to accessing the latest version`;
+      expect(renderMessage[1]).toEqual(
+        `  ${cli._textBold("functions:secrets:access")} ${cmdLabel}\x1b[K`
+      );
+    });
+
     it("Should show that the unselected command in index [2] is 'appdistribution:testers:add -> add testers to project (and App Distribution group, if specified via flag)'", () => {
+      onfireCLI._setInput("appdistribution");
       const renderMessage = onfireCLI._getCommandsToRender();
       const cmdLabel = `-> add testers to project (and App Distribution group, if specified via flag)`;
       expect(renderMessage[2]).toEqual(
@@ -533,23 +541,34 @@ describe("Test getting rendering list", () => {
   });
 
   describe("Test partial matching", () => {
-    beforeAll(() => {
-      const command = "emss";
+    const setCliInput = (command: string) => {
       onfireCLI._setInput(command);
       onfireCLI._setCursorPosition(onfireCLI.prefix.length + command.length);
-    });
-
+    };
     it("Should show that there are 5 options to render", () => {
+      setCliInput("emss");
       const renderMessage = onfireCLI._getCommandsToRender();
       expect(renderMessage.length).toEqual(5);
     });
 
     it("Should show that the selected option in index [0] is 'emulators:start -> start the local Firebase emulators'", () => {
+      setCliInput("emss");
       const renderMessage = onfireCLI._getCommandsToRender();
       const cmdLabel = `-> start the local Firebase emulators`;
       expect(renderMessage[0]).toEqual(
         `${cli._textCyan(cli._textBold(">"))} ${cli._textGreen(
           cli._textBold("emulators:start")
+        )} ${cli._textGreen(cmdLabel)}\x1b[K`
+      );
+    });
+
+    it("Should show that the selected option in index [0] is 'functions:secrets:access -> access secret value given secret and its version. Defaults to accessing the latest version'", () => {
+      setCliInput("funcsecacess");
+      const renderMessage = onfireCLI._getCommandsToRender();
+      const cmdLabel = `-> access secret value given secret and its version. Defaults to accessing the latest version`;
+      expect(renderMessage[0]).toEqual(
+        `${cli._textCyan(cli._textBold(">"))} ${cli._textGreen(
+          cli._textBold("functions:secrets:access")
         )} ${cli._textGreen(cmdLabel)}\x1b[K`
       );
     });
