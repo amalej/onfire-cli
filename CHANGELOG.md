@@ -1,5 +1,10 @@
 <!-- ADD CHANGES HERE -->
 
+Unreleased
+
+- Fix issue with regex parsing `<KEY>[@version>`
+  - This happens when typing commands like `functions:secrets:access`
+
 v1.4.0
 
 - Fixed issue where Onfire CLI cannot parse commands on firebase-tools v15

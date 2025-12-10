@@ -411,7 +411,9 @@ export class OnFireCLI extends CommandLineInterface {
       );
     } else {
       // TODO: improve matching. try to avoid using regex
-      const regExp = new RegExp(`(\\b${highlight}\\b)(?!.*\\1)`);
+      const safeHighlightRegExp =
+        highlight?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") ?? "";
+      const regExp = new RegExp(`(\\b${safeHighlightRegExp}\\b)(?!.*\\1)`);
       console.log(
         `${this.textBold(this.textYellow("Usage:"))} ${cmdConfig.usage.replace(
           regExp,
