@@ -2,8 +2,9 @@
 
 Unreleased
 
-- Fix issue with regex parsing `<KEY>[@version>`
+- Fixed issue with regex parsing `<KEY>[@version>`
   - This happens when typing commands like `functions:secrets:access`
+- Update a bunch of vulnerable dependencies
 
 v1.4.0
 
